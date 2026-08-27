@@ -24,12 +24,12 @@ import (
 	"mgw-module-manager-migration/old_impl/util/dir_fs"
 )
 
-type StorageHandler interface {
+type storageHandler interface {
 	ListMod(ctx context.Context, filter pkg_model.ModFilter, dependencyInfo bool) (map[string]pkg_model.Module, error)
 	ReadMod(ctx context.Context, mID string, dependencyInfo bool) (pkg_model.Module, error)
 }
 
-type ModFileHandler interface {
+type modFileHandler interface {
 	GetModule(file fs.File) (*module_lib.Module, error)
 	GetModFile(dir dir_fs.DirFS) (fs.File, string, error)
 }

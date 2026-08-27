@@ -22,7 +22,6 @@ import (
 	"io/fs"
 	"mgw-module-manager-migration/old_impl/handlers/context_hdl"
 	"mgw-module-manager-migration/old_impl/libs/cew_lib"
-	"mgw-module-manager-migration/old_impl/libs/hm_lib"
 	"mgw-module-manager-migration/old_impl/model"
 	"mgw-module-manager-migration/old_impl/util/naming_hdl"
 	"os"
@@ -31,10 +30,10 @@ import (
 )
 
 type Handler struct {
-	storageHandler StorageHandler
-	cfgVltHandler  CfgValidationHandler
-	cewClient      cew_lib.Api
-	hmClient       hm_lib.Api
+	storageHandler storageHandler
+	cfgVltHandler  cfgValidationHandler
+	cewClient      cewClient
+	hmClient       hmClient
 	dbTimeout      time.Duration
 	httpTimeout    time.Duration
 	wrkSpcPath     string
@@ -45,7 +44,7 @@ type Handler struct {
 	moduleNet      string
 }
 
-func New(storageHandler StorageHandler, cfgVltHandler CfgValidationHandler, cewClient cew_lib.Api, hmClient hm_lib.Api, dbTimeout time.Duration, httpTimeout time.Duration, workspacePath, depHostPath, secHostPath, managerID, moduleNet, coreID string) *Handler {
+func New(storageHandler storageHandler, cfgVltHandler cfgValidationHandler, cewClient cewClient, hmClient hmClient, dbTimeout time.Duration, httpTimeout time.Duration, workspacePath, depHostPath, secHostPath, managerID, moduleNet, coreID string) *Handler {
 	return &Handler{
 		storageHandler: storageHandler,
 		cfgVltHandler:  cfgVltHandler,

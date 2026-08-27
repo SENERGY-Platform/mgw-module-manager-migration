@@ -18,16 +18,26 @@ package dep_hdl
 
 import (
 	"context"
+	"mgw-module-manager-migration/old_impl/libs/cew_lib"
+	"mgw-module-manager-migration/old_impl/libs/hm_lib"
 	"mgw-module-manager-migration/old_impl/libs/module_lib"
 	"mgw-module-manager-migration/old_impl/model"
 )
 
-type StorageHandler interface {
+type storageHandler interface {
 	ListDep(ctx context.Context, filter model.DepFilter, dependencyInfo, assets, containers bool) (map[string]model.Deployment, error)
 	ReadDep(ctx context.Context, dID string, dependencyInfo, assets, containers bool) (model.Deployment, error)
 }
 
-type CfgValidationHandler interface {
+type cfgValidationHandler interface {
 	ValidateValue(cType string, cTypeOpt module_lib.ConfigTypeOptions, value any, isSlice bool, dataType module_lib.DataType) error
 	ValidateValInOpt(cOpt any, value any, isSlice bool, dataType module_lib.DataType) error
+}
+
+type cewClient interface {
+	GetContainers(ctx context.Context, filter cew_lib.ContainerFilter) ([]cew_lib.Container, error)
+}
+
+type hmClient interface {
+	GetHostResource(ctx context.Context, rID string) (hm_lib.HostResource, error)
 }

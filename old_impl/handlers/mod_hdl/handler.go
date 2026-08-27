@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"mgw-module-manager-migration/old_impl/libs/cew_lib"
 	"mgw-module-manager-migration/old_impl/libs/module_lib"
 	"mgw-module-manager-migration/old_impl/model"
 	"mgw-module-manager-migration/old_impl/model/pkg_model"
@@ -31,20 +30,18 @@ import (
 )
 
 type Handler struct {
-	storageHandler StorageHandler
-	modFileHandler ModFileHandler
-	cewClient      cew_lib.Api
+	storageHandler storageHandler
+	modFileHandler modFileHandler
 	dbTimeout      time.Duration
 	httpTimeout    time.Duration
 	wrkSpcPath     string
 	mu             sync.RWMutex
 }
 
-func New(storageHandler StorageHandler, modFileHandler ModFileHandler, cewClient cew_lib.Api, dbTimeout, httpTimeout time.Duration, workspacePath string) *Handler {
+func New(storageHandler storageHandler, modFileHandler modFileHandler, dbTimeout, httpTimeout time.Duration, workspacePath string) *Handler {
 	return &Handler{
 		storageHandler: storageHandler,
 		modFileHandler: modFileHandler,
-		cewClient:      cewClient,
 		dbTimeout:      dbTimeout,
 		httpTimeout:    httpTimeout,
 		wrkSpcPath:     workspacePath,

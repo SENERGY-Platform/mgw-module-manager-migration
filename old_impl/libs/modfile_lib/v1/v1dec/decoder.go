@@ -18,6 +18,8 @@ package v1dec
 
 import (
 	"mgw-module-manager-migration/old_impl/libs/modfile_lib/v1/model"
+
+	"gopkg.in/yaml.v3"
 )
 
 func decode(yn *yaml.Node) (any, error) {

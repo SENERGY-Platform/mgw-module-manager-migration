@@ -19,7 +19,6 @@ package storage_hdl
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"errors"
 	"mgw-module-manager-migration/old_impl/model"
 	"strings"
@@ -82,92 +81,8 @@ func (h *Handler) ReadDepAdv(ctx context.Context, dID, ref string) (pkg_model.De
 	return adv, nil
 }
 
-func (h *Handler) CreateDepAdv(ctx context.Context, txItf driver.Tx, adv pkg_model.DepAdvertisement) (string, error) {
-	var tx *sql.Tx
-	if txItf != nil {
-		tx = txItf.(*sql.Tx)
-	} else {
-		var e error
-		if tx, e = h.db.BeginTx(ctx, nil); e != nil {
-			return "", model.NewInternalError(e)
-		}
-		defer tx.Rollback()
-	}
-	res, err := tx.ExecContext(ctx, "INSERT INTO `dep_advertisements` (`id`, `dep_id`, `mod_id`, `origin`, `ref`, `timestamp`) VALUES (UUID(), ?, ?, ?, ?, ?)", adv.DepID, adv.ModuleID, adv.Origin, adv.Ref, adv.Timestamp)
-	if err != nil {
-		return "", model.NewInternalError(err)
-	}
-	i, err := res.LastInsertId()
-	if err != nil {
-		return "", model.NewInternalError(err)
-	}
-	row := tx.QueryRowContext(ctx, "SELECT `id` FROM `dep_advertisements` WHERE `index` = ?", i)
-	var id string
-	if err = row.Scan(&id); err != nil {
-		return "", model.NewInternalError(err)
-	}
-	if id == "" {
-		return "", model.NewInternalError(errors.New("generating id failed"))
-	}
-	if len(adv.Items) > 0 {
-		if err = insertDepAdvItems(ctx, tx.PrepareContext, id, adv.Items); err != nil {
-			return "", err
-		}
-	}
-	if txItf == nil {
-		if err = tx.Commit(); err != nil {
-			return "", model.NewInternalError(err)
-		}
-	}
-	return id, nil
-}
-
-func (h *Handler) DeleteDepAdv(ctx context.Context, txItf driver.Tx, dID, ref string) error {
-	execContext := h.db.ExecContext
-	if txItf != nil {
-		tx := txItf.(*sql.Tx)
-		execContext = tx.ExecContext
-	}
-	res, err := execContext(ctx, "DELETE FROM `dep_advertisements` WHERE `dep_id` = ? AND `ref` = ?", dID, ref)
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	if n < 1 {
-		return model.NewNotFoundError(errors.New("no rows affected"))
-	}
-	return nil
-}
-
-func (h *Handler) DeleteAllDepAdv(ctx context.Context, txItf driver.Tx, dID string) error {
-	execContext := h.db.ExecContext
-	if txItf != nil {
-		tx := txItf.(*sql.Tx)
-		execContext = tx.ExecContext
-	}
-	res, err := execContext(ctx, "DELETE FROM `dep_advertisements` WHERE `dep_id` = ?", dID)
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	if n < 1 {
-		return model.NewNotFoundError(errors.New("no rows affected"))
-	}
-	return nil
-}
-
 func selectDepAdvItems(ctx context.Context, db *sql.DB, id string) (map[string]string, error) {
 	return selectStrMap(ctx, db.QueryContext, "SELECT `key`, `value` FROM `dep_adv_items` WHERE `adv_id` = ?", id)
-}
-
-func insertDepAdvItems(ctx context.Context, pf func(ctx context.Context, query string) (*sql.Stmt, error), id string, m map[string]string) error {
-	return insertStrMap(ctx, pf, "INSERT INTO `dep_adv_items` (`adv_id`, `key`, `value`) VALUES (?, ?, ?)", id, m)
 }
 
 func genDepAdvFilter(filter pkg_model.DepAdvFilter) (string, []any) {

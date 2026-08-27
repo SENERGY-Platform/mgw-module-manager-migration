@@ -18,7 +18,6 @@ package mod_hdl
 
 import (
 	"context"
-	"database/sql/driver"
 	"io/fs"
 	"mgw-module-manager-migration/old_impl/libs/module_lib"
 	"mgw-module-manager-migration/old_impl/model/pkg_model"
@@ -26,14 +25,8 @@ import (
 )
 
 type StorageHandler interface {
-	BeginTransaction(ctx context.Context) (driver.Tx, error)
 	ListMod(ctx context.Context, filter pkg_model.ModFilter, dependencyInfo bool) (map[string]pkg_model.Module, error)
 	ReadMod(ctx context.Context, mID string, dependencyInfo bool) (pkg_model.Module, error)
-	CreateMod(ctx context.Context, tx driver.Tx, mod pkg_model.Module) error
-	UpdateMod(ctx context.Context, tx driver.Tx, mod pkg_model.Module) error
-	DeleteMod(ctx context.Context, tx driver.Tx, mID string) error
-	CreateModDependencies(ctx context.Context, tx driver.Tx, mID string, mIDs []string) error
-	DeleteModDependencies(ctx context.Context, tx driver.Tx, mID string) error
 }
 
 type ModFileHandler interface {

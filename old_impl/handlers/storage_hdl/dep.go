@@ -19,7 +19,6 @@ package storage_hdl
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"errors"
 	"mgw-module-manager-migration/old_impl/model"
 	"strings"
@@ -137,73 +136,6 @@ func (h *Handler) AppendDepTree(ctx context.Context, tree map[string]model.Deplo
 		if err := h.appendDepTree(ctx, dep, tree, assets, containers); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func (h *Handler) CreateDep(ctx context.Context, txItf driver.Tx, depBase model.DepBase) (string, error) {
-	execContext := h.db.ExecContext
-	queryRowContext := h.db.QueryRowContext
-	if txItf != nil {
-		tx := txItf.(*sql.Tx)
-		execContext = tx.ExecContext
-		queryRowContext = tx.QueryRowContext
-	}
-	res, err := execContext(ctx, "INSERT INTO `deployments` (`id`, `mod_id`, `mod_ver`, `name`, `dir`, `enabled`, `indirect`, `created`, `updated`) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)", depBase.Module.ID, depBase.Module.Version, depBase.Name, depBase.Dir, depBase.Enabled, depBase.Indirect, depBase.Created, depBase.Updated)
-	if err != nil {
-		return "", model.NewInternalError(err)
-	}
-	i, err := res.LastInsertId()
-	if err != nil {
-		return "", model.NewInternalError(err)
-	}
-	row := queryRowContext(ctx, "SELECT `id` FROM `deployments` WHERE `index` = ?", i)
-	var id string
-	if err = row.Scan(&id); err != nil {
-		return "", model.NewInternalError(err)
-	}
-	if id == "" {
-		return "", model.NewInternalError(errors.New("generating id failed"))
-	}
-	return id, nil
-}
-
-func (h *Handler) UpdateDep(ctx context.Context, txItf driver.Tx, depBase model.DepBase) error {
-	execContext := h.db.ExecContext
-	if txItf != nil {
-		tx := txItf.(*sql.Tx)
-		execContext = tx.ExecContext
-	}
-	res, err := execContext(ctx, "UPDATE `deployments` SET `mod_ver` = ?, `name` = ?, `dir` = ?, `enabled` = ?, `indirect` = ?, `updated` = ? WHERE `id` = ?", depBase.Module.Version, depBase.Name, depBase.Dir, depBase.Enabled, depBase.Indirect, depBase.Updated, depBase.ID)
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	if n < 1 {
-		return model.NewNotFoundError(errors.New("no rows affected"))
-	}
-	return nil
-}
-
-func (h *Handler) DeleteDep(ctx context.Context, txItf driver.Tx, dID string) error {
-	execContext := h.db.ExecContext
-	if txItf != nil {
-		tx := txItf.(*sql.Tx)
-		execContext = tx.ExecContext
-	}
-	res, err := execContext(ctx, "DELETE FROM `deployments` WHERE `id` = ?", dID)
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	if n < 1 {
-		return model.NewNotFoundError(errors.New("no rows affected"))
 	}
 	return nil
 }

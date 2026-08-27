@@ -19,7 +19,6 @@ package storage_hdl
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"errors"
 	"mgw-module-manager-migration/old_impl/model"
 	"strings"
@@ -93,66 +92,6 @@ func (h *Handler) ReadMod(ctx context.Context, mID string, dependencyInfo bool) 
 		return pkg_model.Module{}, model.NewInternalError(err)
 	}
 	return mod, nil
-}
-
-func (h *Handler) CreateMod(ctx context.Context, txItf driver.Tx, mod pkg_model.Module) error {
-	execContext := h.db.ExecContext
-	if txItf != nil {
-		tx := txItf.(*sql.Tx)
-		execContext = tx.ExecContext
-	}
-	res, err := execContext(ctx, "INSERT INTO `modules` (`id`, `dir`, `modfile`, `added`, `updated`) VALUES (?, ?, ?, ?, ?)", mod.ID, mod.Dir, mod.ModFile, mod.Added, mod.Updated)
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	if n < 1 {
-		return model.NewNotFoundError(errors.New("no rows affected"))
-	}
-	return nil
-}
-
-func (h *Handler) UpdateMod(ctx context.Context, txItf driver.Tx, mod pkg_model.Module) error {
-	execContext := h.db.ExecContext
-	if txItf != nil {
-		tx := txItf.(*sql.Tx)
-		execContext = tx.ExecContext
-	}
-	res, err := execContext(ctx, "UPDATE `modules` SET `dir` = ?, `modfile` = ?, `updated` = ? WHERE `id` = ?", mod.Dir, mod.ModFile, mod.Updated, mod.ID)
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	if n < 1 {
-		return model.NewNotFoundError(errors.New("no rows affected"))
-	}
-	return nil
-}
-
-func (h *Handler) DeleteMod(ctx context.Context, txItf driver.Tx, mID string) error {
-	execContext := h.db.ExecContext
-	if txItf != nil {
-		tx := txItf.(*sql.Tx)
-		execContext = tx.ExecContext
-	}
-	res, err := execContext(ctx, "DELETE FROM `modules` WHERE `id` = ?", mID)
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	if n < 1 {
-		return model.NewNotFoundError(errors.New("no rows affected"))
-	}
-	return nil
 }
 
 func genModFilter(filter pkg_model.ModFilter) (string, []any) {

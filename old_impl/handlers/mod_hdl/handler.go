@@ -18,23 +18,16 @@ package mod_hdl
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
-	"mgw-module-manager-migration/old_impl/handlers/context_hdl"
 	"mgw-module-manager-migration/old_impl/libs/cew_lib"
 	"mgw-module-manager-migration/old_impl/libs/module_lib"
 	"mgw-module-manager-migration/old_impl/model"
 	"mgw-module-manager-migration/old_impl/model/pkg_model"
-	"mgw-module-manager-migration/old_impl/util/dir_fs"
-	"net/url"
 	"os"
 	"path"
-	"strings"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -132,178 +125,6 @@ func (h *Handler) AppendModTree(ctx context.Context, tree map[string]pkg_model.M
 	for _, mod := range tree {
 		if err := h.appendModTree(ctx, mod, tree); err != nil {
 			return err
-		}
-	}
-	return nil
-}
-
-func (h *Handler) Add(ctx context.Context, mod *module_lib.Module, modDir dir_fs.DirFS, modFile string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	newUUID, err := uuid.NewUUID()
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	dirName := newUUID.String()
-	t := time.Now().UTC()
-	tx, err := h.storageHandler.BeginTransaction(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	ctxWt, cf := context.WithTimeout(ctx, h.dbTimeout)
-	defer cf()
-	if err = h.storageHandler.CreateMod(ctxWt, tx, pkg_model.Module{
-		Module: model.Module{
-			Module:  mod,
-			Added:   t,
-			Updated: t,
-		},
-		Dir:     dirName,
-		ModFile: modFile,
-	}); err != nil {
-		return err
-	}
-	if len(mod.Dependencies) > 0 {
-		dependencies := make([]string, 0, len(mod.Dependencies))
-		for mID := range mod.Dependencies {
-			dependencies = append(dependencies, mID)
-		}
-		ctxWt2, cf2 := context.WithTimeout(ctx, h.dbTimeout)
-		defer cf2()
-		if err = h.storageHandler.CreateModDependencies(ctxWt2, tx, mod.ID, dependencies); err != nil {
-			return err
-		}
-	}
-	dstPath := path.Join(h.wrkSpcPath, dirName)
-	if err = dir_fs.Copy(modDir, dstPath); err != nil {
-		return model.NewInternalError(err)
-	}
-	if err = tx.Commit(); err != nil {
-		if e := os.RemoveAll(dstPath); err != nil {
-			fmt.Fprintln(os.Stderr, e)
-		}
-		return model.NewInternalError(err)
-	}
-	return nil
-}
-
-func (h *Handler) Delete(ctx context.Context, mID string, force bool) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	ctxWt, cf := context.WithTimeout(ctx, h.dbTimeout)
-	defer cf()
-	mod, err := h.storageHandler.ReadMod(ctxWt, mID, true)
-	if err != nil {
-		return err
-	}
-	mod.Module.Module, err = h.readModule(mod.Dir, mod.ModFile)
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	if !force && len(mod.ModRequiring) > 0 {
-		ctxWt2, cf2 := context.WithTimeout(ctx, h.dbTimeout)
-		defer cf2()
-		modules, err := h.storageHandler.ListMod(ctxWt2, pkg_model.ModFilter{IDs: mod.ModRequiring}, false)
-		if err != nil {
-			return err
-		}
-		var reqBy []string
-		for id := range modules {
-			reqBy = append(reqBy, id)
-		}
-		return model.NewInternalError(fmt.Errorf("required by: %s", strings.Join(reqBy, ", ")))
-	}
-	ch := context_hdl.New()
-	defer ch.CancelAll()
-	for _, srv := range mod.Services {
-		err = h.cewClient.RemoveImage(ch.Add(context.WithTimeout(ctx, h.httpTimeout)), url.QueryEscape(url.QueryEscape(srv.Image)))
-		if err != nil {
-			var nfe *cew_lib.NotFoundError
-			if !errors.As(err, &nfe) {
-				fmt.Fprintln(os.Stderr, err)
-			}
-		}
-	}
-	if err = os.RemoveAll(path.Join(h.wrkSpcPath, mod.Dir)); err != nil {
-		return model.NewInternalError(err)
-	}
-	return h.storageHandler.DeleteMod(ctx, nil, mID)
-}
-
-func (h *Handler) Update(ctx context.Context, mod *module_lib.Module, modDir dir_fs.DirFS, modFile string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	ch := context_hdl.New()
-	defer ch.CancelAll()
-	oldMod, err := h.storageHandler.ReadMod(ch.Add(context.WithTimeout(ctx, h.dbTimeout)), mod.ID, false)
-	if err != nil {
-		return err
-	}
-	oldMod.Module.Module, err = h.readModule(oldMod.Dir, oldMod.ModFile)
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	newUUID, err := uuid.NewUUID()
-	if err != nil {
-		return model.NewInternalError(err)
-	}
-	dirName := newUUID.String()
-	t := time.Now().UTC()
-	tx, err := h.storageHandler.BeginTransaction(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if err = h.storageHandler.DeleteModDependencies(ch.Add(context.WithTimeout(ctx, h.dbTimeout)), tx, mod.ID); err != nil {
-		return err
-	}
-	if err = h.storageHandler.UpdateMod(ch.Add(context.WithTimeout(ctx, h.dbTimeout)), tx, pkg_model.Module{
-		Module: model.Module{
-			Module:  mod,
-			Added:   oldMod.Added,
-			Updated: t,
-		},
-		Dir:     dirName,
-		ModFile: modFile,
-	}); err != nil {
-		return err
-	}
-	if len(mod.Dependencies) > 0 {
-		dependencies := make([]string, 0, len(mod.Dependencies))
-		for mID := range mod.Dependencies {
-			dependencies = append(dependencies, mID)
-		}
-		if err = h.storageHandler.CreateModDependencies(ch.Add(context.WithTimeout(ctx, h.dbTimeout)), tx, mod.ID, dependencies); err != nil {
-			return err
-		}
-	}
-	dstPath := path.Join(h.wrkSpcPath, dirName)
-	if err = dir_fs.Copy(modDir, dstPath); err != nil {
-		return model.NewInternalError(err)
-	}
-	if err = tx.Commit(); err != nil {
-		if e := os.RemoveAll(dstPath); err != nil {
-			fmt.Fprintln(os.Stderr, e)
-		}
-		return model.NewInternalError(err)
-	}
-	if e := os.RemoveAll(path.Join(h.wrkSpcPath, oldMod.Dir)); e != nil {
-		fmt.Fprintln(os.Stderr, e)
-	}
-	images := make(map[string]struct{})
-	for _, srv := range mod.Services {
-		images[srv.Image] = struct{}{}
-	}
-	for _, srv := range oldMod.Services {
-		if _, ok := images[srv.Image]; !ok {
-			err = h.cewClient.RemoveImage(ch.Add(context.WithTimeout(ctx, h.httpTimeout)), url.QueryEscape(url.QueryEscape(srv.Image)))
-			if err != nil {
-				var nfe *cew_lib.NotFoundError
-				if !errors.As(err, &nfe) {
-					fmt.Fprintln(os.Stderr, err)
-				}
-			}
 		}
 	}
 	return nil

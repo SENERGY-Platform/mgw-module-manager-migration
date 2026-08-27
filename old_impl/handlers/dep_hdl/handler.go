@@ -24,7 +24,6 @@ import (
 	"mgw-module-manager-migration/old_impl/libs/cew_lib"
 	"mgw-module-manager-migration/old_impl/libs/hm_lib"
 	"mgw-module-manager-migration/old_impl/model"
-	"mgw-module-manager-migration/old_impl/util"
 	"mgw-module-manager-migration/old_impl/util/naming_hdl"
 	"os"
 	"path"
@@ -100,7 +99,7 @@ func (h *Handler) List(ctx context.Context, filter model.DepFilter, dependencyIn
 		defer cf2()
 		ctrList, err := h.cewClient.GetContainers(ctxWt2, cew_lib.ContainerFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID}})
 		if err != nil {
-			util.Logger.Errorf("could not retrieve containers: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "could not retrieve containers: %s\n", err.Error())
 			return deployments, nil
 		}
 		ctrMap := make(map[string]cew_lib.Container)
@@ -134,7 +133,7 @@ func (h *Handler) Get(ctx context.Context, id string, dependencyInfo, assets, co
 		defer cf2()
 		ctrList, err := h.cewClient.GetContainers(ctxWt2, cew_lib.ContainerFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID, naming_hdl.DeploymentIDLabel: id}})
 		if err != nil {
-			util.Logger.Errorf("could not retrieve containers: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "could not retrieve containers: %s\n", err.Error())
 			return deployment, nil
 		}
 		ctrMap := make(map[string]cew_lib.Container)
@@ -176,7 +175,7 @@ func getDepHealthAndCtrInfo(dID string, depContainers map[string]model.DepContai
 		ctr, ok := ctrMap[depCtr.ID]
 		if !ok {
 			state = model.DepUnhealthy
-			util.Logger.Warningf("deployment '%s' missing container '%s'", dID, depCtr.ID)
+			fmt.Fprintf(os.Stderr, "deployment '%s' missing container '%s'\n", dID, depCtr.ID)
 		} else {
 			if state == "" {
 				if ctr.Health != nil {

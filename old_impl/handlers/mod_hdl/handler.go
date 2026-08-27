@@ -26,7 +26,6 @@ import (
 	"mgw-module-manager-migration/old_impl/libs/module_lib"
 	"mgw-module-manager-migration/old_impl/model"
 	"mgw-module-manager-migration/old_impl/model/pkg_model"
-	"mgw-module-manager-migration/old_impl/util"
 	"mgw-module-manager-migration/old_impl/util/dir_fs"
 	"net/url"
 	"os"
@@ -84,7 +83,7 @@ func (h *Handler) List(ctx context.Context, filter model.ModFilter, dependencyIn
 	for _, mod := range modMap {
 		mod.Module.Module, err = h.readModule(mod.Dir, mod.ModFile)
 		if err != nil {
-			util.Logger.Error(err)
+			fmt.Fprintln(os.Stderr, err)
 			continue
 		}
 		mod.Path = h.wrkSpcPath
@@ -182,7 +181,7 @@ func (h *Handler) Add(ctx context.Context, mod *module_lib.Module, modDir dir_fs
 	}
 	if err = tx.Commit(); err != nil {
 		if e := os.RemoveAll(dstPath); err != nil {
-			util.Logger.Error(e)
+			fmt.Fprintln(os.Stderr, e)
 		}
 		return model.NewInternalError(err)
 	}
@@ -222,7 +221,7 @@ func (h *Handler) Delete(ctx context.Context, mID string, force bool) error {
 		if err != nil {
 			var nfe *cew_lib.NotFoundError
 			if !errors.As(err, &nfe) {
-				util.Logger.Error(err)
+				fmt.Fprintln(os.Stderr, err)
 			}
 		}
 	}
@@ -285,12 +284,12 @@ func (h *Handler) Update(ctx context.Context, mod *module_lib.Module, modDir dir
 	}
 	if err = tx.Commit(); err != nil {
 		if e := os.RemoveAll(dstPath); err != nil {
-			util.Logger.Error(e)
+			fmt.Fprintln(os.Stderr, e)
 		}
 		return model.NewInternalError(err)
 	}
 	if e := os.RemoveAll(path.Join(h.wrkSpcPath, oldMod.Dir)); e != nil {
-		util.Logger.Error(e)
+		fmt.Fprintln(os.Stderr, e)
 	}
 	images := make(map[string]struct{})
 	for _, srv := range mod.Services {
@@ -302,7 +301,7 @@ func (h *Handler) Update(ctx context.Context, mod *module_lib.Module, modDir dir
 			if err != nil {
 				var nfe *cew_lib.NotFoundError
 				if !errors.As(err, &nfe) {
-					util.Logger.Error(err)
+					fmt.Fprintln(os.Stderr, err)
 				}
 			}
 		}

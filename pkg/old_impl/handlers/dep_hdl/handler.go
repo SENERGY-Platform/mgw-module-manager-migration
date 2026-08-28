@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"mgw-module-manager-migration/pkg/old_impl/handlers/context_hdl"
 	"mgw-module-manager-migration/pkg/old_impl/libs/cew_lib"
 	"mgw-module-manager-migration/pkg/old_impl/model"
 	"mgw-module-manager-migration/pkg/old_impl/util/naming_hdl"
@@ -84,125 +83,81 @@ func (h *Handler) InitWorkspace(perm fs.FileMode) error {
 	return nil
 }
 
-func (h *Handler) List(ctx context.Context, filter model.DepFilter, dependencyInfo, assets, containers, containerInfo bool) (map[string]model.Deployment, error) {
+func (h *Handler) List(ctx context.Context) (map[string]model.Deployment, error) {
 	ctxWt, cf := context.WithTimeout(ctx, h.dbTimeout)
 	defer cf()
-	if containerInfo {
-		containers = true
-	}
-	deployments, err := h.storageHandler.ListDep(ctxWt, filter, dependencyInfo, assets, containers)
+	deployments, err := h.storageHandler.ListDep(ctxWt, model.DepFilter{}, false, true, true)
 	if err != nil {
 		return nil, err
 	}
-	if containerInfo && len(deployments) > 0 {
+	if len(deployments) > 0 {
 		ctxWt2, cf2 := context.WithTimeout(ctx, h.dbTimeout)
 		defer cf2()
 		ctrList, err := h.cewClient.GetContainers(ctxWt2, cew_lib.ContainerFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID}})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not retrieve containers: %s\n", err.Error())
-			return deployments, nil
+			return nil, err
 		}
 		ctrMap := make(map[string]cew_lib.Container)
 		for _, ctr := range ctrList {
 			ctrMap[ctr.ID] = ctr
 		}
-		withCtrInfo := make(map[string]model.Deployment)
-		for dID, deployment := range deployments {
-			if deployment.Enabled {
-				deployment.State, deployment.Containers = getDepHealthAndCtrInfo(dID, deployment.Containers, ctrMap)
-			}
-			withCtrInfo[dID] = deployment
+		ctxWt3, cf3 := context.WithTimeout(ctx, h.dbTimeout)
+		defer cf3()
+		volList, err := h.cewClient.GetVolumes(ctxWt3, cew_lib.VolumeFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID}})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not retrieve volumes: %s\n", err.Error())
+			return nil, err
 		}
-		return withCtrInfo, nil
+		volMap := getVolMap(volList)
+		withCtrAndVols := make(map[string]model.Deployment)
+		for dID, deployment := range deployments {
+			deployment.Containers = getDepCtrInfo(dID, deployment.Containers, ctrMap)
+			deployment.Volumes = volMap[dID]
+			withCtrAndVols[dID] = deployment
+		}
+		return withCtrAndVols, nil
 	}
 	return deployments, nil
 }
 
-func (h *Handler) Get(ctx context.Context, id string, dependencyInfo, assets, containers, containerInfo bool) (model.Deployment, error) {
-	ctxWt, cf := context.WithTimeout(ctx, h.dbTimeout)
-	defer cf()
-	if containerInfo {
-		containers = true
-	}
-	deployment, err := h.storageHandler.ReadDep(ctxWt, id, dependencyInfo, assets, containers)
-	if err != nil {
-		return model.Deployment{}, err
-	}
-	if containerInfo && deployment.Enabled {
-		ctxWt2, cf2 := context.WithTimeout(ctx, h.dbTimeout)
-		defer cf2()
-		ctrList, err := h.cewClient.GetContainers(ctxWt2, cew_lib.ContainerFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID, naming_hdl.DeploymentIDLabel: id}})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not retrieve containers: %s\n", err.Error())
-			return deployment, nil
+func getVolMap(vols []cew_lib.Volume) map[string]map[string]string {
+	volMap := make(map[string]map[string]string)
+	for _, vol := range vols {
+		depId, ok := vol.Labels[naming_hdl.DeploymentIDLabel]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "volume without deployment id: %s\n", vol.Name)
+			continue
 		}
-		ctrMap := make(map[string]cew_lib.Container)
-		for _, ctr := range ctrList {
-			ctrMap[ctr.ID] = ctr
+		ref, ok := vol.Labels[naming_hdl.VolumeRefLabel]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "volume without reference: %s\n", vol.Name)
+			continue
 		}
-		deployment.State, deployment.Containers = getDepHealthAndCtrInfo(deployment.ID, deployment.Containers, ctrMap)
+		depVols, ok := volMap[depId]
+		if !ok {
+			depVols = make(map[string]string)
+			volMap[depId] = depVols
+		}
+		depVols[ref] = vol.Name
 	}
-	return deployment, nil
+	return volMap
 }
 
-func (h *Handler) getModDependencyDeployments(ctx context.Context, modDependencies map[string]string) (map[string]model.Deployment, error) {
-	ch := context_hdl.New()
-	defer ch.CancelAll()
-	m := make(map[string]model.Deployment)
-	for mID := range modDependencies {
-		deployments, err := h.storageHandler.ListDep(ch.Add(context.WithTimeout(ctx, h.dbTimeout)), model.DepFilter{ModuleID: mID}, false, false, true)
-		if err != nil {
-			return nil, err
-		}
-		if len(deployments) == 0 {
-			return nil, model.NewInternalError(fmt.Errorf("dependency '%s' not deployed", mID))
-		}
-		if len(deployments) > 1 {
-			return nil, model.NewInternalError(fmt.Errorf("dependency '%s' has multiple deployments", mID))
-		}
-		for _, dep := range deployments {
-			m[mID] = dep
-			break
-		}
-	}
-	return m, nil
-}
-
-func getDepHealthAndCtrInfo(dID string, depContainers map[string]model.DepContainer, ctrMap map[string]cew_lib.Container) (*model.HealthState, map[string]model.DepContainer) {
-	var state model.HealthState
+func getDepCtrInfo(dID string, depContainers map[string]model.DepContainer, ctrMap map[string]cew_lib.Container) map[string]model.DepContainer {
 	withCtrInfo := make(map[string]model.DepContainer)
 	for ref, depCtr := range depContainers {
 		ctr, ok := ctrMap[depCtr.ID]
 		if !ok {
-			state = model.DepUnhealthy
 			fmt.Fprintf(os.Stderr, "deployment '%s' missing container '%s'\n", dID, depCtr.ID)
 		} else {
-			if state == "" {
-				if ctr.Health != nil {
-					switch *ctr.Health {
-					case cew_lib.TransitionState:
-						state = model.DepTrans
-					case cew_lib.UnhealthyState:
-						state = model.DepUnhealthy
-					}
-				} else {
-					switch ctr.State {
-					case cew_lib.InitState, cew_lib.RestartingState, cew_lib.RemovingState:
-						state = model.DepTrans
-					case cew_lib.StoppedState, cew_lib.DeadState, cew_lib.PausedState:
-						state = model.DepUnhealthy
-					}
-				}
-			}
 			depCtr.Info = &model.ContainerInfo{
+				Name:    ctr.Name,
 				ImageID: ctr.ImageID,
 				State:   ctr.State,
 			}
 		}
 		withCtrInfo[ref] = depCtr
 	}
-	if state == "" {
-		state = model.DepHealthy
-	}
-	return &state, withCtrInfo
+	return withCtrInfo
 }

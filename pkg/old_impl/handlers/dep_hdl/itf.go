@@ -36,6 +36,7 @@ type cfgValidationHandler interface {
 
 type cewClient interface {
 	GetContainers(ctx context.Context, filter cew_lib.ContainerFilter) ([]cew_lib.Container, error)
+	GetVolumes(ctx context.Context, filter cew_lib.VolumeFilter) ([]cew_lib.Volume, error)
 }
 
 type hmClient interface {

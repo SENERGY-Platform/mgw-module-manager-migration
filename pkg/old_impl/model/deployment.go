@@ -41,6 +41,7 @@ type DepAssets struct {
 	HostResources map[string]string    `json:"host_resources"` // {ref:resourceID}
 	Secrets       map[string]DepSecret `json:"secrets"`        // {ref:DepSecret}
 	Configs       map[string]DepConfig `json:"configs"`        // {ref:DepConfig}
+	Volumes       map[string]string    `json:"volumes"`        // {ref:volName}
 }
 
 type Deployment struct {
@@ -78,6 +79,7 @@ type DepContainer struct {
 }
 
 type ContainerInfo struct {
+	Name    string `json:"name"`
 	ImageID string `json:"image_id"` // docker image id
 	State   string `json:"state"`    // docker container state
 }

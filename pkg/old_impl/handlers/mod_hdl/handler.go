@@ -31,16 +31,19 @@ type Handler struct {
 	storageHandler storageHandler
 	modFileHandler modFileHandler
 	dbTimeout      time.Duration
-	httpTimeout    time.Duration
 	wrkSpcPath     string
 }
 
-func New(storageHandler storageHandler, modFileHandler modFileHandler, dbTimeout, httpTimeout time.Duration, workspacePath string) *Handler {
+func New(
+	storageHandler storageHandler,
+	modFileHandler modFileHandler,
+	dbTimeout time.Duration,
+	workspacePath string,
+) *Handler {
 	return &Handler{
 		storageHandler: storageHandler,
 		modFileHandler: modFileHandler,
 		dbTimeout:      dbTimeout,
-		httpTimeout:    httpTimeout,
 		wrkSpcPath:     workspacePath,
 	}
 }

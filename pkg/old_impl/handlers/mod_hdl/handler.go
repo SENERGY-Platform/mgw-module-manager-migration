@@ -21,11 +21,9 @@ import (
 	"fmt"
 	"io/fs"
 	"mgw-module-manager-migration/pkg/old_impl/libs/module_lib"
-	"mgw-module-manager-migration/pkg/old_impl/model"
 	"mgw-module-manager-migration/pkg/old_impl/model/pkg_model"
 	"os"
 	"path"
-	"sync"
 	"time"
 )
 
@@ -35,7 +33,6 @@ type Handler struct {
 	dbTimeout      time.Duration
 	httpTimeout    time.Duration
 	wrkSpcPath     string
-	mu             sync.RWMutex
 }
 
 func New(storageHandler storageHandler, modFileHandler modFileHandler, dbTimeout, httpTimeout time.Duration, workspacePath string) *Handler {
@@ -49,8 +46,6 @@ func New(storageHandler storageHandler, modFileHandler modFileHandler, dbTimeout
 }
 
 func (h *Handler) Init(perm fs.FileMode) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
 	if !path.IsAbs(h.wrkSpcPath) {
 		return fmt.Errorf("workspace path must be absolute")
 	}
@@ -60,12 +55,10 @@ func (h *Handler) Init(perm fs.FileMode) error {
 	return nil
 }
 
-func (h *Handler) List(ctx context.Context, filter model.ModFilter, dependencyInfo bool) (map[string]pkg_model.Module, error) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+func (h *Handler) List(ctx context.Context) (map[string]pkg_model.Module, error) {
 	ctxWt, cf := context.WithTimeout(ctx, h.dbTimeout)
 	defer cf()
-	modMap, err := h.storageHandler.ListMod(ctxWt, pkg_model.ModFilter{IDs: filter.IDs}, dependencyInfo)
+	modMap, err := h.storageHandler.ListMod(ctxWt, pkg_model.ModFilter{}, false)
 	if err != nil {
 		return nil, err
 	}
@@ -77,75 +70,9 @@ func (h *Handler) List(ctx context.Context, filter model.ModFilter, dependencyIn
 			continue
 		}
 		mod.Path = h.wrkSpcPath
-		if filterMod(filter, mod.Module.Module) {
-			modules[mod.ID] = mod
-		}
+		modules[mod.ID] = mod
 	}
 	return modules, nil
-}
-
-func (h *Handler) Get(ctx context.Context, mID string, dependencyInfo bool) (pkg_model.Module, error) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	ctxWt, cf := context.WithTimeout(ctx, h.dbTimeout)
-	defer cf()
-	mod, err := h.storageHandler.ReadMod(ctxWt, mID, dependencyInfo)
-	if err != nil {
-		return pkg_model.Module{}, err
-	}
-	mod.Module.Module, err = h.readModule(mod.Dir, mod.ModFile)
-	if err != nil {
-		return pkg_model.Module{}, model.NewInternalError(err)
-	}
-	mod.Path = h.wrkSpcPath
-	return mod, nil
-}
-
-func (h *Handler) GetTree(ctx context.Context, mID string) (map[string]pkg_model.Module, error) {
-	mod, err := h.storageHandler.ReadMod(ctx, mID, true)
-	if err != nil {
-		return nil, err
-	}
-	mod.Module.Module, err = h.readModule(mod.Dir, mod.ModFile)
-	if err != nil {
-		return nil, model.NewInternalError(err)
-	}
-	mod.Path = h.wrkSpcPath
-	tree := map[string]pkg_model.Module{mod.ID: mod}
-	if err = h.appendModTree(ctx, mod, tree); err != nil {
-		return nil, err
-	}
-	return tree, nil
-}
-
-func (h *Handler) AppendModTree(ctx context.Context, tree map[string]pkg_model.Module) error {
-	for _, mod := range tree {
-		if err := h.appendModTree(ctx, mod, tree); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (h *Handler) appendModTree(ctx context.Context, mod pkg_model.Module, tree map[string]pkg_model.Module) error {
-	for _, mID := range mod.RequiredMod {
-		if _, ok := tree[mID]; !ok {
-			m, err := h.storageHandler.ReadMod(ctx, mID, true)
-			if err != nil {
-				return err
-			}
-			m.Module.Module, err = h.readModule(m.Dir, m.ModFile)
-			if err != nil {
-				return err
-			}
-			m.Path = h.wrkSpcPath
-			tree[mID] = m
-			if err = h.appendModTree(ctx, m, tree); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func (h *Handler) readModule(dir, modFile string) (*module_lib.Module, error) {
@@ -158,39 +85,4 @@ func (h *Handler) readModule(dir, modFile string) (*module_lib.Module, error) {
 		return nil, err
 	}
 	return m, nil
-}
-
-func filterMod(filter model.ModFilter, m *module_lib.Module) bool {
-	if filter.Name != "" {
-		if m.Name != filter.Name {
-			return false
-		}
-	}
-	if filter.Type != "" {
-		if m.Type != filter.Type {
-			return false
-		}
-	}
-	if filter.DeploymentType != "" {
-		if m.DeploymentType != filter.DeploymentType {
-			return false
-		}
-	}
-	if filter.Author != "" {
-		if m.Author != filter.Author {
-			return false
-		}
-	}
-	if len(filter.Tags) > 0 {
-		var ok bool
-		for tag := range filter.Tags {
-			if _, ok = m.Tags[tag]; ok {
-				break
-			}
-		}
-		if !ok {
-			return false
-		}
-	}
-	return true
 }

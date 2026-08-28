@@ -14,7 +14,6 @@ import (
 	"mgw-module-manager-migration/pkg/old_impl/libs/modfile_lib/v1/v1dec"
 	"mgw-module-manager-migration/pkg/old_impl/libs/modfile_lib/v1/v1gen"
 	"mgw-module-manager-migration/pkg/old_impl/model"
-	"mgw-module-manager-migration/pkg/old_impl/model/pkg_model"
 	"mgw-module-manager-migration/pkg/old_impl/util"
 	"mgw-module-manager-migration/pkg/old_impl/util/naming_hdl"
 	"net/http"
@@ -91,7 +90,7 @@ func (s *Service) GetManagerId() string {
 	return s.managerId
 }
 
-func (s *Service) GetModules(ctx context.Context) (map[string]pkg_model.ModuleAndDeployment, error) {
+func (s *Service) GetModules(ctx context.Context) (map[string]ModuleAndDeployment, error) {
 	modules, err := s.modulesHandler.List(ctx)
 	if err != nil {
 		return nil, err
@@ -112,12 +111,19 @@ func (s *Service) GetModules(ctx context.Context) (map[string]pkg_model.ModuleAn
 	if len(mulDep) > 0 {
 		return nil, errors.New(fmt.Sprintf("multiple deployments: %v", mulDep))
 	}
-	result := make(map[string]pkg_model.ModuleAndDeployment)
+	result := make(map[string]ModuleAndDeployment)
 	for id, module := range modules {
-		result[id] = pkg_model.ModuleAndDeployment{
-			Module:     module,
+		result[id] = ModuleAndDeployment{
+			Module:     module.Module,
+			Dir:        module.Dir,
 			Deployment: depMap[id],
 		}
 	}
 	return result, nil
+}
+
+type ModuleAndDeployment struct {
+	model.Module
+	Dir        string           `json:"dir"`
+	Deployment model.Deployment `json:"deployment"`
 }

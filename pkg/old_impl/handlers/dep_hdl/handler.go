@@ -30,9 +30,7 @@ import (
 
 type Handler struct {
 	storageHandler storageHandler
-	cfgVltHandler  cfgValidationHandler
 	cewClient      cewClient
-	hmClient       hmClient
 	dbTimeout      time.Duration
 	httpTimeout    time.Duration
 	wrkSpcPath     string
@@ -41,9 +39,7 @@ type Handler struct {
 
 func New(
 	storageHandler storageHandler,
-	cfgVltHandler cfgValidationHandler,
 	cewClient cewClient,
-	hmClient hmClient,
 	dbTimeout time.Duration,
 	httpTimeout time.Duration,
 	workspacePath string,
@@ -51,26 +47,12 @@ func New(
 ) *Handler {
 	return &Handler{
 		storageHandler: storageHandler,
-		cfgVltHandler:  cfgVltHandler,
 		cewClient:      cewClient,
-		hmClient:       hmClient,
 		dbTimeout:      dbTimeout,
 		httpTimeout:    httpTimeout,
 		wrkSpcPath:     workspacePath,
 		managerID:      managerID,
 	}
-}
-
-type secretVariant struct {
-	Item  *string
-	Path  string
-	AsEnv bool
-	Value string
-}
-
-type secret struct {
-	ID       string
-	Variants map[string]secretVariant
 }
 
 func (h *Handler) InitWorkspace(perm fs.FileMode) error {
@@ -91,7 +73,7 @@ func (h *Handler) List(ctx context.Context) (map[string]model.Deployment, error)
 		return nil, err
 	}
 	if len(deployments) > 0 {
-		ctxWt2, cf2 := context.WithTimeout(ctx, h.dbTimeout)
+		ctxWt2, cf2 := context.WithTimeout(ctx, h.httpTimeout)
 		defer cf2()
 		ctrList, err := h.cewClient.GetContainers(ctxWt2, cew_lib.ContainerFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID}})
 		if err != nil {
@@ -102,7 +84,7 @@ func (h *Handler) List(ctx context.Context) (map[string]model.Deployment, error)
 		for _, ctr := range ctrList {
 			ctrMap[ctr.ID] = ctr
 		}
-		ctxWt3, cf3 := context.WithTimeout(ctx, h.dbTimeout)
+		ctxWt3, cf3 := context.WithTimeout(ctx, h.httpTimeout)
 		defer cf3()
 		volList, err := h.cewClient.GetVolumes(ctxWt3, cew_lib.VolumeFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID}})
 		if err != nil {

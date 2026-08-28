@@ -3,9 +3,6 @@ package old_impl
 import (
 	"database/sql"
 	"mgw-module-manager-migration/pkg/old_impl/clients/cew_client"
-	"mgw-module-manager-migration/pkg/old_impl/clients/hm_client"
-	"mgw-module-manager-migration/pkg/old_impl/handlers/cfg_valid_hdl"
-	"mgw-module-manager-migration/pkg/old_impl/handlers/cfg_valid_hdl/validators"
 	"mgw-module-manager-migration/pkg/old_impl/handlers/dep_hdl"
 	"mgw-module-manager-migration/pkg/old_impl/handlers/mod_hdl"
 	"mgw-module-manager-migration/pkg/old_impl/handlers/modfile_hdl"
@@ -37,12 +34,6 @@ type Service struct {
 	DeploymentsHandler *dep_hdl.Handler
 }
 
-var inputValidators = map[string]cfg_valid_hdl.Validator{
-	"regex":            validators.Regex,
-	"number_compare":   validators.NumberCompare,
-	"text_len_compare": validators.TextLenCompare,
-}
-
 func New(config Config, db *sql.DB) (*Service, error) {
 	managerId, err := util.GetManagerID(config.ManagerIDPath, "")
 	if err != nil {
@@ -64,7 +55,6 @@ func New(config Config, db *sql.DB) (*Service, error) {
 		storageHandler,
 		modFileHandler,
 		config.DatabaseTimeout,
-		config.HttpTimeout,
 		config.ModHandlerWorkdirPath,
 	)
 	err = modHandler.Init(0770)
@@ -72,25 +62,11 @@ func New(config Config, db *sql.DB) (*Service, error) {
 		return nil, err
 	}
 
-	cfgDefs, err := cfg_valid_hdl.LoadDefs(config.ConfigDefsPath)
-	if err != nil {
-		return nil, err
-	}
-
-	cfgValidHandler, err := cfg_valid_hdl.New(cfgDefs, inputValidators)
-	if err != nil {
-		return nil, err
-	}
-
-	hmClient := hm_client.New(http.DefaultClient, config.HmBaseUrl)
-
 	cewClient := cew_client.New(http.DefaultClient, config.CewBaseUrl)
 
 	depHandler := dep_hdl.New(
 		storageHandler,
-		cfgValidHandler,
 		cewClient,
-		hmClient,
 		config.DatabaseTimeout,
 		config.HttpTimeout,
 		config.DepHandlerWorkdirPath,

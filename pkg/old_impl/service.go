@@ -1,6 +1,7 @@
 package old_impl
 
 import (
+	"context"
 	"database/sql"
 	"mgw-module-manager-migration/pkg/old_impl/clients/cew_client"
 	"mgw-module-manager-migration/pkg/old_impl/handlers/dep_hdl"
@@ -10,6 +11,8 @@ import (
 	"mgw-module-manager-migration/pkg/old_impl/libs/modfile_lib/modfile"
 	"mgw-module-manager-migration/pkg/old_impl/libs/modfile_lib/v1/v1dec"
 	"mgw-module-manager-migration/pkg/old_impl/libs/modfile_lib/v1/v1gen"
+	"mgw-module-manager-migration/pkg/old_impl/model"
+	"mgw-module-manager-migration/pkg/old_impl/model/pkg_model"
 	"mgw-module-manager-migration/pkg/old_impl/util"
 	"mgw-module-manager-migration/pkg/old_impl/util/naming_hdl"
 	"net/http"
@@ -19,23 +22,21 @@ import (
 type Config struct {
 	ModHandlerWorkdirPath string
 	DepHandlerWorkdirPath string
-	ConfigDefsPath        string
 	ManagerIDPath         string
 	CoreID                string
 	DatabaseTimeout       time.Duration
 	CewBaseUrl            string
-	HmBaseUrl             string
 	HttpTimeout           time.Duration
 }
 
 type Service struct {
-	ManagerId          string
-	ModulesHandler     *mod_hdl.Handler
-	DeploymentsHandler *dep_hdl.Handler
+	managerId          string
+	modulesHandler     *mod_hdl.Handler
+	deploymentsHandler *dep_hdl.Handler
 }
 
-func New(config Config, db *sql.DB) (*Service, error) {
-	managerId, err := util.GetManagerID(config.ManagerIDPath, "")
+func New(config Config, db *sql.DB, managerId string) (*Service, error) {
+	managerId, err := util.GetManagerID(config.ManagerIDPath, managerId)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +79,20 @@ func New(config Config, db *sql.DB) (*Service, error) {
 	}
 
 	return &Service{
-		ManagerId:          managerId,
-		ModulesHandler:     modHandler,
-		DeploymentsHandler: depHandler,
+		managerId:          managerId,
+		modulesHandler:     modHandler,
+		deploymentsHandler: depHandler,
 	}, nil
+}
+
+func (s *Service) GetManagerId() string {
+	return s.managerId
+}
+
+func (s *Service) GetModules(ctx context.Context) (map[string]pkg_model.Module, error) {
+	return s.modulesHandler.List(ctx)
+}
+
+func (s *Service) GetDeployments(ctx context.Context) (map[string]model.Deployment, error) {
+	return s.deploymentsHandler.List(ctx)
 }

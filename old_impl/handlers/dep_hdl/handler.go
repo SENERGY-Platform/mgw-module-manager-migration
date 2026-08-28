@@ -37,14 +37,19 @@ type Handler struct {
 	dbTimeout      time.Duration
 	httpTimeout    time.Duration
 	wrkSpcPath     string
-	depHostPath    string
-	secHostPath    string
 	managerID      string
-	coreID         string
-	moduleNet      string
 }
 
-func New(storageHandler storageHandler, cfgVltHandler cfgValidationHandler, cewClient cewClient, hmClient hmClient, dbTimeout time.Duration, httpTimeout time.Duration, workspacePath, depHostPath, secHostPath, managerID, moduleNet, coreID string) *Handler {
+func New(
+	storageHandler storageHandler,
+	cfgVltHandler cfgValidationHandler,
+	cewClient cewClient,
+	hmClient hmClient,
+	dbTimeout time.Duration,
+	httpTimeout time.Duration,
+	workspacePath string,
+	managerID string,
+) *Handler {
 	return &Handler{
 		storageHandler: storageHandler,
 		cfgVltHandler:  cfgVltHandler,
@@ -53,11 +58,7 @@ func New(storageHandler storageHandler, cfgVltHandler cfgValidationHandler, cewC
 		dbTimeout:      dbTimeout,
 		httpTimeout:    httpTimeout,
 		wrkSpcPath:     workspacePath,
-		depHostPath:    depHostPath,
-		secHostPath:    secHostPath,
 		managerID:      managerID,
-		coreID:         coreID,
-		moduleNet:      moduleNet,
 	}
 }
 

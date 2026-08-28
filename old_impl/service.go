@@ -19,33 +19,16 @@ import (
 	"time"
 )
 
-type HttpClientConfig struct {
-	CewBaseUrl string        `json:"cew_base_url" env_var:"CEW_BASE_URL"`
-	CmBaseUrl  string        `json:"cm_base_url" env_var:"CM_BASE_URL"`
-	HmBaseUrl  string        `json:"hm_base_url" env_var:"HM_BASE_URL"`
-	SmBaseUrl  string        `json:"sm_base_url" env_var:"SM_BASE_URL"`
-	Timeout    time.Duration `json:"timeout" env_var:"HTTP_TIMEOUT"`
-}
-
-type ModHandlerConfig struct {
-	WorkdirPath string `json:"workdir_path" env_var:"MH_WORKDIR_PATH"`
-}
-
-type DepHandlerConfig struct {
-	WorkdirPath string `json:"workdir_path" env_var:"DH_WORKDIR_PATH"`
-	HostDepPath string `json:"host_dep_path" env_var:"DH_HOST_DEP_PATH"`
-	HostSecPath string `json:"host_sec_path" env_var:"DH_HOST_SEC_PATH"`
-	ModuleNet   string `json:"module_net" env_var:"DH_MODULE_NET"`
-}
-
 type Config struct {
-	ModHandler      ModHandlerConfig `json:"module_handler"`
-	DepHandler      DepHandlerConfig `json:"deployment_handler"`
-	ConfigDefsPath  string           `json:"config_defs_path"`
-	HttpClient      HttpClientConfig `json:"http_client"`
-	ManagerIDPath   string           `json:"manager_id_path"`
-	CoreID          string           `json:"core_id"`
-	DatabaseTimeout time.Duration    `json:"database_timeout"`
+	ModHandlerWorkdirPath string
+	DepHandlerWorkdirPath string
+	ConfigDefsPath        string
+	ManagerIDPath         string
+	CoreID                string
+	DatabaseTimeout       time.Duration
+	CewBaseUrl            string
+	HmBaseUrl             string
+	HttpTimeout           time.Duration
 }
 
 type Service struct {
@@ -81,8 +64,8 @@ func New(config Config, db *sql.DB) (*Service, error) {
 		storageHandler,
 		modFileHandler,
 		config.DatabaseTimeout,
-		config.HttpClient.Timeout,
-		config.ModHandler.WorkdirPath,
+		config.HttpTimeout,
+		config.ModHandlerWorkdirPath,
 	)
 	err = modHandler.Init(0770)
 	if err != nil {
@@ -99,9 +82,9 @@ func New(config Config, db *sql.DB) (*Service, error) {
 		return nil, err
 	}
 
-	hmClient := hm_client.New(http.DefaultClient, config.HttpClient.HmBaseUrl)
+	hmClient := hm_client.New(http.DefaultClient, config.HmBaseUrl)
 
-	cewClient := cew_client.New(http.DefaultClient, config.HttpClient.CewBaseUrl)
+	cewClient := cew_client.New(http.DefaultClient, config.CewBaseUrl)
 
 	depHandler := dep_hdl.New(
 		storageHandler,
@@ -109,13 +92,9 @@ func New(config Config, db *sql.DB) (*Service, error) {
 		cewClient,
 		hmClient,
 		config.DatabaseTimeout,
-		config.HttpClient.Timeout,
-		config.DepHandler.WorkdirPath,
-		config.DepHandler.HostDepPath,
-		config.DepHandler.HostSecPath,
+		config.HttpTimeout,
+		config.DepHandlerWorkdirPath,
 		managerId,
-		config.DepHandler.ModuleNet,
-		config.CoreID,
 	)
 	err = depHandler.InitWorkspace(0770)
 	if err != nil {

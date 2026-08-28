@@ -22,6 +22,11 @@ import (
 	"path"
 )
 
+type ModuleAndDeployment struct {
+	Module
+	Deployment model.Deployment
+}
+
 type Module struct {
 	model.Module
 	RequiredMod  []string // modules required by this module

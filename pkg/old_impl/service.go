@@ -3,6 +3,8 @@ package old_impl
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"mgw-module-manager-migration/pkg/old_impl/clients/cew_client"
 	"mgw-module-manager-migration/pkg/old_impl/handlers/dep_hdl"
 	"mgw-module-manager-migration/pkg/old_impl/handlers/mod_hdl"
@@ -89,10 +91,33 @@ func (s *Service) GetManagerId() string {
 	return s.managerId
 }
 
-func (s *Service) GetModules(ctx context.Context) (map[string]pkg_model.Module, error) {
-	return s.modulesHandler.List(ctx)
-}
-
-func (s *Service) GetDeployments(ctx context.Context) (map[string]model.Deployment, error) {
-	return s.deploymentsHandler.List(ctx)
+func (s *Service) GetModules(ctx context.Context) (map[string]pkg_model.ModuleAndDeployment, error) {
+	modules, err := s.modulesHandler.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	deployments, err := s.deploymentsHandler.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	depMap := make(map[string]model.Deployment)
+	mulDep := make(map[string][]string)
+	for id, deployment := range deployments {
+		_, ok := depMap[deployment.Module.ID]
+		if ok {
+			mulDep[deployment.Module.ID] = append(mulDep[deployment.Module.ID], id)
+		}
+		depMap[deployment.Module.ID] = deployment
+	}
+	if len(mulDep) > 0 {
+		return nil, errors.New(fmt.Sprintf("multiple deployments: %v", mulDep))
+	}
+	result := make(map[string]pkg_model.ModuleAndDeployment)
+	for id, module := range modules {
+		result[id] = pkg_model.ModuleAndDeployment{
+			Module:     module,
+			Deployment: depMap[id],
+		}
+	}
+	return result, nil
 }

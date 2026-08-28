@@ -18,9 +18,19 @@ type DatabaseConfig struct {
 	ConnectionMaxLifetime sb_config_types.Duration `json:"connection_max_lifetime" env_var:"DATABASE_CONNECTION_MAX_LIFETIME"`
 }
 
+type OldImplConfig struct {
+	ModHandlerWorkdirPath string                   `json:"mod_handler_workdir_path" env_var:"OLD_MOD_WORKDIR_PATH"`
+	DepHandlerWorkdirPath string                   `json:"dep_handler_workdir_path" env_var:"OLD_DEP_WORKDIR_PATH"`
+	ManagerIDPath         string                   `json:"manager_id_path" env_var:"OLD_MANAGER_ID_PATH"`
+	CewBaseUrl            string                   `json:"cew_base_url"  env_var:"CEW_BASE_URL"`
+	HttpTimeout           sb_config_types.Duration `json:"http_timeout" env_var:"HTTP_TIMEOUT"`
+}
+
 type Config struct {
-	CoreId   string         `json:"core_id" env_var:"CORE_ID"`
-	Database DatabaseConfig `json:"database"`
+	CoreId    string         `json:"core_id" env_var:"CORE_ID"`
+	ManagerId string         `json:"manager_id" env_var:"MANAGER_ID"`
+	Database  DatabaseConfig `json:"database"`
+	OldImpl   OldImplConfig  `json:"old_impl"`
 }
 
 var defaultConfig = Config{
@@ -30,6 +40,13 @@ var defaultConfig = Config{
 		MaxOpenConnections:    25,
 		MaxIdleConnections:    25,
 		ConnectionMaxLifetime: sb_config_types.Duration(time.Minute * 5),
+	},
+	OldImpl: OldImplConfig{
+		ModHandlerWorkdirPath: "/opt/module-manager/modules",
+		DepHandlerWorkdirPath: "/opt/module-manager/deployments",
+		ManagerIDPath:         "/opt/module-manager/data/mid",
+		CewBaseUrl:            "http://core-api/ce-wrapper",
+		HttpTimeout:           sb_config_types.Duration(time.Second * 30),
 	},
 }
 

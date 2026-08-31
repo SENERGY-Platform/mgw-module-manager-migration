@@ -23,18 +23,3 @@ func ToAny[S ~[]E, E any](sl S) []any {
 	}
 	return anySl
 }
-
-func RemoveDuplicates[S ~[]E, E comparable](sl S) []E {
-	if len(sl) < 2 {
-		return sl
-	}
-	set := make(map[E]struct{})
-	var sl2 []E
-	for _, s := range sl {
-		if _, ok := set[s]; !ok {
-			sl2 = append(sl2, s)
-		}
-		set[s] = struct{}{}
-	}
-	return sl2
-}

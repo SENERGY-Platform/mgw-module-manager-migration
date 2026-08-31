@@ -21,8 +21,8 @@ import (
 )
 
 type DepAdvertisement struct {
-	ID    string
-	DepID string
+	ID    string `json:"id"`
+	DepID string `json:"dep_id"`
 	model.DepAdvertisement
 }
 

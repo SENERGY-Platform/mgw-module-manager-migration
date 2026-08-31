@@ -14,9 +14,11 @@ import (
 	"mgw-module-manager-migration/pkg/components/old_impl/libs/modfile_lib/v1/v1dec"
 	"mgw-module-manager-migration/pkg/components/old_impl/libs/modfile_lib/v1/v1gen"
 	"mgw-module-manager-migration/pkg/components/old_impl/model"
+	"mgw-module-manager-migration/pkg/components/old_impl/model/pkg_model"
 	"mgw-module-manager-migration/pkg/components/old_impl/util"
 	"mgw-module-manager-migration/pkg/components/old_impl/util/naming_hdl"
 	"net/http"
+	"slices"
 	"time"
 )
 
@@ -34,6 +36,7 @@ type Service struct {
 	managerId          string
 	modulesHandler     *mod_hdl.Handler
 	deploymentsHandler *dep_hdl.Handler
+	storageHandler     *storage_hdl.Handler
 }
 
 func New(config Config, db *sql.DB, managerId string) (*Service, error) {
@@ -83,6 +86,7 @@ func New(config Config, db *sql.DB, managerId string) (*Service, error) {
 		managerId:          managerId,
 		modulesHandler:     modHandler,
 		deploymentsHandler: depHandler,
+		storageHandler:     storageHandler,
 	}, nil
 }
 
@@ -99,6 +103,31 @@ func (s *Service) GetModules(ctx context.Context) (map[string]ModuleAndDeploymen
 	if err != nil {
 		return nil, err
 	}
+	advertisements, err := s.storageHandler.ListDepAdv(ctx, pkg_model.DepAdvFilter{})
+	if err != nil {
+		return nil, err
+	}
+	depMap, err := getDepMap(deployments)
+	if err != nil {
+		return nil, err
+	}
+	advMap, err := getAdvMap(advertisements)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]ModuleAndDeployment)
+	for id, module := range modules {
+		result[id] = ModuleAndDeployment{
+			Module:            module.Module,
+			Dir:               module.Dir,
+			Deployment:        depMap[id],
+			DepAdvertisements: advMap[id],
+		}
+	}
+	return result, nil
+}
+
+func getDepMap(deployments map[string]model.Deployment) (map[string]model.Deployment, error) {
 	depMap := make(map[string]model.Deployment)
 	mulDep := make(map[string][]string)
 	for id, deployment := range deployments {
@@ -111,19 +140,37 @@ func (s *Service) GetModules(ctx context.Context) (map[string]ModuleAndDeploymen
 	if len(mulDep) > 0 {
 		return nil, errors.New(fmt.Sprintf("multiple deployments: %v", mulDep))
 	}
-	result := make(map[string]ModuleAndDeployment)
-	for id, module := range modules {
-		result[id] = ModuleAndDeployment{
-			Module:     module.Module,
-			Dir:        module.Dir,
-			Deployment: depMap[id],
+	return depMap, nil
+}
+
+func getAdvMap(advertisements map[string]pkg_model.DepAdvertisement) (map[string][]pkg_model.DepAdvertisement, error) {
+	mulDep := make(map[string][]string)
+	for _, advertisement := range advertisements {
+		depIds := mulDep[advertisement.ModuleID]
+		if !slices.Contains(depIds, advertisement.DepID) {
+			depIds = append(depIds, advertisement.DepID)
+		}
+		mulDep[advertisement.ModuleID] = depIds
+	}
+	depCount := 0
+	for _, depIds := range mulDep {
+		if len(depIds) > 1 {
+			depCount++
 		}
 	}
-	return result, nil
+	if depCount > 0 {
+		return nil, errors.New(fmt.Sprintf("multiple deployments: %v", mulDep))
+	}
+	advMap := make(map[string][]pkg_model.DepAdvertisement)
+	for _, advertisement := range advertisements {
+		advMap[advertisement.ModuleID] = append(advMap[advertisement.ModuleID], advertisement)
+	}
+	return advMap, nil
 }
 
 type ModuleAndDeployment struct {
 	model.Module
-	Dir        string           `json:"dir"`
-	Deployment model.Deployment `json:"deployment"`
+	Dir               string                       `json:"dir"`
+	Deployment        model.Deployment             `json:"deployment"`
+	DepAdvertisements []pkg_model.DepAdvertisement `json:"dep_advertisements"`
 }

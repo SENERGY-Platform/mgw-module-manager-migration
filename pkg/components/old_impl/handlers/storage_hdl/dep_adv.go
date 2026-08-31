@@ -108,3 +108,24 @@ func genDepAdvFilter(filter pkg_model.DepAdvFilter) (string, []any) {
 	}
 	return "", nil
 }
+
+func selectStrMap(ctx context.Context, qf func(ctx context.Context, query string, args ...any) (*sql.Rows, error), query, id string) (map[string]string, error) {
+	rows, err := qf(ctx, query, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	m := make(map[string]string)
+	for rows.Next() {
+		var key string
+		var val string
+		if err = rows.Scan(&key, &val); err != nil {
+			return nil, model.NewInternalError(err)
+		}
+		m[key] = val
+	}
+	if err = rows.Err(); err != nil {
+		return nil, model.NewInternalError(err)
+	}
+	return m, nil
+}

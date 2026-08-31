@@ -17,6 +17,7 @@ import (
 	"mgw-module-manager-migration/pkg/components/old_impl/model/pkg_model"
 	"mgw-module-manager-migration/pkg/components/old_impl/util"
 	"mgw-module-manager-migration/pkg/components/old_impl/util/naming_hdl"
+	"net"
 	"net/http"
 	"slices"
 	"time"
@@ -27,7 +28,6 @@ type Config struct {
 	DepHandlerWorkdirPath string
 	ManagerIDPath         string
 	CoreID                string
-	DatabaseTimeout       time.Duration
 	CewBaseUrl            string
 	HttpTimeout           time.Duration
 }
@@ -59,7 +59,6 @@ func New(config Config, db *sql.DB, managerId string) (*Service, error) {
 	modHandler := mod_hdl.New(
 		storageHandler,
 		modFileHandler,
-		config.DatabaseTimeout,
 		config.ModHandlerWorkdirPath,
 	)
 	err = modHandler.Init(0770)
@@ -67,13 +66,11 @@ func New(config Config, db *sql.DB, managerId string) (*Service, error) {
 		return nil, err
 	}
 
-	cewClient := cew_client.New(http.DefaultClient, config.CewBaseUrl)
+	cewClient := cew_client.New(newHttpClient(config.HttpTimeout), config.CewBaseUrl)
 
 	depHandler := dep_hdl.New(
 		storageHandler,
 		cewClient,
-		config.DatabaseTimeout,
-		config.HttpTimeout,
 		config.DepHandlerWorkdirPath,
 		managerId,
 	)
@@ -173,4 +170,20 @@ type ModuleAndDeployment struct {
 	Dir               string                       `json:"dir"`
 	Deployment        model.Deployment             `json:"deployment"`
 	DepAdvertisements []pkg_model.DepAdvertisement `json:"dep_advertisements"`
+}
+
+func newHttpClient(timeout time.Duration) *http.Client {
+	return &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
 }

@@ -24,26 +24,22 @@ import (
 	"mgw-module-manager-migration/pkg/components/old_impl/model/pkg_model"
 	"os"
 	"path"
-	"time"
 )
 
 type Handler struct {
 	storageHandler storageHandler
 	modFileHandler modFileHandler
-	dbTimeout      time.Duration
 	wrkSpcPath     string
 }
 
 func New(
 	storageHandler storageHandler,
 	modFileHandler modFileHandler,
-	dbTimeout time.Duration,
 	workspacePath string,
 ) *Handler {
 	return &Handler{
 		storageHandler: storageHandler,
 		modFileHandler: modFileHandler,
-		dbTimeout:      dbTimeout,
 		wrkSpcPath:     workspacePath,
 	}
 }
@@ -59,9 +55,7 @@ func (h *Handler) Init(perm fs.FileMode) error {
 }
 
 func (h *Handler) List(ctx context.Context) (map[string]pkg_model.Module, error) {
-	ctxWt, cf := context.WithTimeout(ctx, h.dbTimeout)
-	defer cf()
-	modMap, err := h.storageHandler.ListMod(ctxWt, pkg_model.ModFilter{}, false)
+	modMap, err := h.storageHandler.ListMod(ctx, pkg_model.ModFilter{}, false)
 	if err != nil {
 		return nil, err
 	}

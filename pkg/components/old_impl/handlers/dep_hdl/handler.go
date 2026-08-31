@@ -25,14 +25,11 @@ import (
 	"mgw-module-manager-migration/pkg/components/old_impl/util/naming_hdl"
 	"os"
 	"path"
-	"time"
 )
 
 type Handler struct {
 	storageHandler storageHandler
 	cewClient      cewClient
-	dbTimeout      time.Duration
-	httpTimeout    time.Duration
 	wrkSpcPath     string
 	managerID      string
 }
@@ -40,16 +37,12 @@ type Handler struct {
 func New(
 	storageHandler storageHandler,
 	cewClient cewClient,
-	dbTimeout time.Duration,
-	httpTimeout time.Duration,
 	workspacePath string,
 	managerID string,
 ) *Handler {
 	return &Handler{
 		storageHandler: storageHandler,
 		cewClient:      cewClient,
-		dbTimeout:      dbTimeout,
-		httpTimeout:    httpTimeout,
 		wrkSpcPath:     workspacePath,
 		managerID:      managerID,
 	}
@@ -66,16 +59,12 @@ func (h *Handler) InitWorkspace(perm fs.FileMode) error {
 }
 
 func (h *Handler) List(ctx context.Context) (map[string]model.Deployment, error) {
-	ctxWt, cf := context.WithTimeout(ctx, h.dbTimeout)
-	defer cf()
-	deployments, err := h.storageHandler.ListDep(ctxWt, model.DepFilter{}, false, true, true)
+	deployments, err := h.storageHandler.ListDep(ctx, model.DepFilter{}, false, true, true)
 	if err != nil {
 		return nil, err
 	}
 	if len(deployments) > 0 {
-		ctxWt2, cf2 := context.WithTimeout(ctx, h.httpTimeout)
-		defer cf2()
-		ctrList, err := h.cewClient.GetContainers(ctxWt2, cew_lib.ContainerFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID}})
+		ctrList, err := h.cewClient.GetContainers(ctx, cew_lib.ContainerFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID}})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not retrieve containers: %s\n", err.Error())
 			return nil, err
@@ -84,9 +73,7 @@ func (h *Handler) List(ctx context.Context) (map[string]model.Deployment, error)
 		for _, ctr := range ctrList {
 			ctrMap[ctr.ID] = ctr
 		}
-		ctxWt3, cf3 := context.WithTimeout(ctx, h.httpTimeout)
-		defer cf3()
-		volList, err := h.cewClient.GetVolumes(ctxWt3, cew_lib.VolumeFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID}})
+		volList, err := h.cewClient.GetVolumes(ctx, cew_lib.VolumeFilter{Labels: map[string]string{naming_hdl.ManagerIDLabel: h.managerID}})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not retrieve volumes: %s\n", err.Error())
 			return nil, err

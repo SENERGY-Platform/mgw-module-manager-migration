@@ -89,6 +89,10 @@ func New(config Config, db *sql.DB, managerId string) (*Service, error) {
 	}, nil
 }
 
+func (s *Service) RenameDatabaseTables(ctx context.Context) error {
+	return s.storageHandler.RenameTables(ctx)
+}
+
 func (s *Service) GetManagerId() string {
 	return s.managerId
 }

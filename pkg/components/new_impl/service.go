@@ -10,10 +10,8 @@ import (
 )
 
 type Config struct {
-	ModHandlerWorkdirPath string
-	DepHandlerWorkdirPath string
-	ManagerIdPath         string
-	ManagerId             string
+	ManagerIdPath string
+	ManagerId     string
 }
 
 type Service struct {

@@ -120,11 +120,13 @@ func (s *Service) GetModules(ctx context.Context) (map[string]ModuleAndDeploymen
 	}
 	result := make(map[string]ModuleAndDeployment)
 	for id, module := range modules {
+		dep, ok := depMap[id]
 		result[id] = ModuleAndDeployment{
 			Module:            module.Module,
 			Dir:               module.Dir,
-			Deployment:        depMap[id],
+			Deployment:        dep,
 			DepAdvertisements: advMap[id],
+			IsDeployed:        ok,
 		}
 	}
 	return result, nil
@@ -176,6 +178,7 @@ type ModuleAndDeployment struct {
 	Dir               string                       `json:"dir"`
 	Deployment        model.Deployment             `json:"deployment"`
 	DepAdvertisements []pkg_model.DepAdvertisement `json:"dep_advertisements"`
+	IsDeployed        bool                         `json:"is_deployed"`
 }
 
 func newHttpClient(timeout time.Duration) *http.Client {

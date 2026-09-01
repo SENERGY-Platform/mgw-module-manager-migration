@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"mgw-module-manager-migration/pkg/components/old_impl/clients/cew_client"
 	"mgw-module-manager-migration/pkg/components/old_impl/handlers/dep_hdl"
 	"mgw-module-manager-migration/pkg/components/old_impl/handlers/mod_hdl"
@@ -19,6 +20,7 @@ import (
 	"mgw-module-manager-migration/pkg/components/old_impl/util/naming_hdl"
 	"net"
 	"net/http"
+	"os"
 	"slices"
 	"time"
 )
@@ -34,6 +36,7 @@ type Config struct {
 
 type Service struct {
 	managerId          string
+	managerIDPath      string
 	modulesHandler     *mod_hdl.Handler
 	deploymentsHandler *dep_hdl.Handler
 	storageHandler     *storage_hdl.Handler
@@ -81,6 +84,7 @@ func New(config Config, db *sql.DB, managerId string) (*Service, error) {
 
 	return &Service{
 		managerId:          managerId,
+		managerIDPath:      config.ManagerIDPath,
 		modulesHandler:     modHandler,
 		deploymentsHandler: depHandler,
 		storageHandler:     storageHandler,
@@ -89,6 +93,15 @@ func New(config Config, db *sql.DB, managerId string) (*Service, error) {
 
 func (s *Service) GetManagerId() string {
 	return s.managerId
+}
+
+func (s *Service) ReadManagerIdFile() ([]byte, error) {
+	file, err := os.Open(s.managerIDPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return io.ReadAll(file)
 }
 
 func (s *Service) GetModules(ctx context.Context) (map[string]ModuleAndDeployment, error) {

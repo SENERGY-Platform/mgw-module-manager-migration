@@ -18,7 +18,7 @@ package util
 
 import (
 	"bytes"
-	"github.com/google/uuid"
+	"errors"
 	"os"
 )
 
@@ -36,19 +36,8 @@ func GetManagerID(pth, val string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var id string
-	if n != 0 {
-		id = buf.String()
-	} else {
-		uid, err := uuid.NewRandom()
-		if err != nil {
-			return "", err
-		}
-		id = uid.String()
-		_, err = file.Write([]byte(id))
-		if err != nil {
-			return "", err
-		}
+	if n == 0 {
+		return "", errors.New("missing manager id")
 	}
-	return id, nil
+	return buf.String(), nil
 }

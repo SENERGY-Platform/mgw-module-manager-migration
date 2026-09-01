@@ -43,7 +43,7 @@ type Service struct {
 func New(config Config, db *sql.DB, managerId string) (*Service, error) {
 	managerId, err := util.GetManagerID(config.ManagerIDPath, managerId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get manager id: %w", err)
 	}
 
 	naming_hdl.Init(config.CoreID, "mgw")
@@ -64,7 +64,7 @@ func New(config Config, db *sql.DB, managerId string) (*Service, error) {
 	)
 	err = modHandler.Init(0770)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init module handler: %w", err)
 	}
 
 	cewClient := cew_client.New(newHttpClient(config.HttpTimeout), config.CewBaseUrl)
@@ -77,7 +77,7 @@ func New(config Config, db *sql.DB, managerId string) (*Service, error) {
 	)
 	err = depHandler.InitWorkspace(0770)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init deployment handler: %w", err)
 	}
 
 	return &Service{
@@ -96,23 +96,23 @@ func (s *Service) GetManagerId() string {
 func (s *Service) GetModules(ctx context.Context) (map[string]ModuleAndDeployment, error) {
 	modules, err := s.modulesHandler.List(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list modules: %w", err)
 	}
 	deployments, err := s.deploymentsHandler.List(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list deployments: %w", err)
 	}
 	advertisements, err := s.storageHandler.ListDepAdv(ctx, pkg_model.DepAdvFilter{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list deployment advertisements: %w", err)
 	}
 	depMap, err := getDepMap(deployments)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build deployment map: %w", err)
 	}
 	advMap, err := getAdvMap(advertisements)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build deployment advertisements map: %w", err)
 	}
 	result := make(map[string]ModuleAndDeployment)
 	for id, module := range modules {

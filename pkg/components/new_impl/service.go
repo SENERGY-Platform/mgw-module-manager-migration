@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"mgw-module-manager-migration/pkg/components/new_impl/components/handler/database"
+	"mgw-module-manager-migration/pkg/components/new_impl/components/handler/database/migrations/db_init"
 	"mgw-module-manager-migration/pkg/components/new_impl/components/helper/naming"
 	"mgw-module-manager-migration/pkg/components/new_impl/models"
 )
@@ -24,6 +25,10 @@ func New(config Config, db *sql.DB) *Service {
 		config:          config,
 		databaseHandler: database.New(db),
 	}
+}
+
+func (s *Service) InitDatabaseTables(ctx context.Context) error {
+	return s.databaseHandler.Migrate(ctx, db_init.Migration)
 }
 
 func (s *Service) WriteManagerId(id string) error {

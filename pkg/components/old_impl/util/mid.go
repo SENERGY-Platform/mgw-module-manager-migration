@@ -26,7 +26,7 @@ func GetManagerID(pth, val string) (string, error) {
 	if val != "" {
 		return val, nil
 	}
-	file, err := os.OpenFile(pth, os.O_CREATE|os.O_RDWR, 0644)
+	file, err := os.Open(pth)
 	if err != nil {
 		return "", err
 	}

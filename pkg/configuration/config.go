@@ -27,7 +27,9 @@ type OldImplConfig struct {
 }
 
 type NewImplConfig struct {
-	ManagerIDPath string `json:"manager_id_path" env_var:"NEW_MANAGER_ID_PATH"`
+	ManagerIDPath     string `json:"manager_id_path" env_var:"NEW_MANAGER_ID_PATH"`
+	RepositorySource  string `json:"repository_source" env_var:"REPOSITORY_SOURCE"`
+	RepositoryChannel string `json:"repository_channel" env_var:"REPOSITORY_CHANNEL"`
 }
 
 type Config struct {
@@ -54,7 +56,9 @@ var defaultConfig = Config{
 		HttpTimeout:           sb_config_types.Duration(time.Second * 30),
 	},
 	NewImpl: NewImplConfig{
-		ManagerIDPath: "/opt/module-manager/service/mid",
+		ManagerIDPath:     "/opt/module-manager/service/mid",
+		RepositorySource:  "github.com/SENERGY-Platform/mgw-module-repository",
+		RepositoryChannel: "main",
 	},
 }
 

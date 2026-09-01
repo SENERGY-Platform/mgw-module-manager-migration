@@ -43,3 +43,7 @@ func (h *Handler) Migrate(ctx context.Context, migrations ...migration) error {
 	}
 	return nil
 }
+
+func (h *Handler) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return h.sqlDB.BeginTx(ctx, nil)
+}

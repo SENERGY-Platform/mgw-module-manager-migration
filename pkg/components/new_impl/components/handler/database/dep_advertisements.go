@@ -24,17 +24,13 @@ import (
 
 func (h *Handler) WriteDeploymentAdvertisements(
 	ctx context.Context,
+	tx *sql.Tx,
 	deploymentId string,
 	advertisements []models.DeploymentAdvertisement,
 	incremental bool,
 ) error {
-	tx, err := h.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
 	if !incremental {
-		_, err = tx.ExecContext(
+		_, err := tx.ExecContext(
 			ctx,
 			"DELETE FROM dep_advertisements WHERE dep_id = ?;",
 			deploymentId,
@@ -45,7 +41,7 @@ func (h *Handler) WriteDeploymentAdvertisements(
 	}
 	for _, advertisement := range advertisements {
 		if incremental {
-			_, err = tx.ExecContext(
+			_, err := tx.ExecContext(
 				ctx,
 				"DELETE FROM dep_advertisements WHERE dep_id = ? AND ref = ?;",
 				deploymentId,
@@ -55,14 +51,10 @@ func (h *Handler) WriteDeploymentAdvertisements(
 				return err
 			}
 		}
-		err = h.insertDeploymentAdvertisement(ctx, tx, deploymentId, advertisement)
+		err := h.insertDeploymentAdvertisement(ctx, tx, deploymentId, advertisement)
 		if err != nil {
 			return err
 		}
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
 	}
 	return nil
 }

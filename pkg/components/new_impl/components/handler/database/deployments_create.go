@@ -24,6 +24,7 @@ import (
 
 func (h *Handler) CreateDeployment(
 	ctx context.Context,
+	tx *sql.Tx,
 	deployment models.DeploymentBase,
 	hostResources []models.DeploymentHostResource,
 	secrets []models.DeploymentSecret,
@@ -34,12 +35,7 @@ func (h *Handler) CreateDeployment(
 	volumes []models.DeploymentVolume,
 	containers []models.DeploymentContainerBase,
 ) error {
-	tx, err := h.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	_, err = tx.ExecContext(
+	_, err := tx.ExecContext(
 		ctx,
 		"INSERT INTO deployments (id, mod_id, mod_source, mod_channel, mod_ver, dir, files_dir, enabled, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		deployment.Id,
@@ -69,10 +65,6 @@ func (h *Handler) CreateDeployment(
 		volumes,
 		containers,
 	)
-	if err != nil {
-		return err
-	}
-	err = tx.Commit()
 	if err != nil {
 		return err
 	}

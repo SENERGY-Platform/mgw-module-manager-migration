@@ -18,11 +18,12 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"mgw-module-manager-migration/pkg/components/new_impl/models"
 )
 
-func (h *Handler) CreateModule(ctx context.Context, mod models.DatabaseModule) error {
-	_, err := h.sqlDB.ExecContext(
+func (h *Handler) CreateModule(ctx context.Context, tx *sql.Tx, mod models.DatabaseModule) error {
+	_, err := tx.ExecContext(
 		ctx,
 		"INSERT INTO modules (id, dir, source, channel, added, updated) VALUES (?, ?, ?, ?, ?, ?);",
 		mod.Id,

@@ -19,7 +19,6 @@ package storage_hdl
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"mgw-module-manager-migration/pkg/components/old_impl/handlers/storage_hdl/dep_util"
 	"mgw-module-manager-migration/pkg/components/old_impl/model"
 	"strings"
@@ -27,7 +26,7 @@ import (
 )
 
 func (h *Handler) ListDep(ctx context.Context, filter model.DepFilter, dependencyInfo, assets, containers bool) (map[string]model.Deployment, error) {
-	q := "SELECT `id`, `mod_id`, `mod_ver`, `name`, `dir`, `enabled`, `indirect`, `created`, `updated` FROM `deployments`"
+	q := "SELECT `id`, `mod_id`, `mod_ver`, `name`, `dir`, `enabled`, `indirect`, `created`, `updated` FROM `bk_deployments`"
 	fc, val := genDepFilter(filter)
 	if fc != "" {
 		q += fc

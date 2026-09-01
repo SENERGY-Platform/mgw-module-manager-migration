@@ -18,8 +18,6 @@ package storage_hdl
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"mgw-module-manager-migration/pkg/components/old_impl/handlers/storage_hdl/dep_util"
 	"mgw-module-manager-migration/pkg/components/old_impl/model"
 	"mgw-module-manager-migration/pkg/components/old_impl/model/pkg_model"
@@ -28,7 +26,7 @@ import (
 )
 
 func (h *Handler) ListMod(ctx context.Context, filter pkg_model.ModFilter, dependencyInfo bool) (map[string]pkg_model.Module, error) {
-	q := "SELECT `id`, `dir`, `modfile`, `added`, `updated` FROM `modules`"
+	q := "SELECT `id`, `dir`, `modfile`, `added`, `updated` FROM `bk_modules`"
 	fc, val := genModFilter(filter)
 	if fc != "" {
 		q += fc

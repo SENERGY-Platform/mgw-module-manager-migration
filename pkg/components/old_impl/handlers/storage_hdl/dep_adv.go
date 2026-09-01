@@ -27,7 +27,7 @@ import (
 )
 
 func (h *Handler) ListDepAdv(ctx context.Context, filter pkg_model.DepAdvFilter) (map[string]pkg_model.DepAdvertisement, error) {
-	q := "SELECT `id`, `dep_id`, `mod_id`, `origin`, `ref`, `timestamp` FROM `dep_advertisements`"
+	q := "SELECT `id`, `dep_id`, `mod_id`, `origin`, `ref`, `timestamp` FROM `bk_dep_advertisements`"
 	fc, val := genDepAdvFilter(filter)
 	if fc != "" {
 		q += fc
@@ -60,7 +60,7 @@ func (h *Handler) ListDepAdv(ctx context.Context, filter pkg_model.DepAdvFilter)
 }
 
 func (h *Handler) ReadDepAdv(ctx context.Context, dID, ref string) (pkg_model.DepAdvertisement, error) {
-	row := h.db.QueryRowContext(ctx, "SELECT `id`, `dep_id`, `mod_id`, `origin`, `ref`, `timestamp` FROM `dep_advertisements` WHERE `dep_id` = ? AND `ref` = ?", dID, ref)
+	row := h.db.QueryRowContext(ctx, "SELECT `id`, `dep_id`, `mod_id`, `origin`, `ref`, `timestamp` FROM `bk_dep_advertisements` WHERE `dep_id` = ? AND `ref` = ?", dID, ref)
 	var adv pkg_model.DepAdvertisement
 	var ts []uint8
 	err := row.Scan(&adv.ID, &adv.DepID, &adv.ModuleID, &adv.Origin, &adv.Ref, &ts)
@@ -81,7 +81,7 @@ func (h *Handler) ReadDepAdv(ctx context.Context, dID, ref string) (pkg_model.De
 }
 
 func selectDepAdvItems(ctx context.Context, db *sql.DB, id string) (map[string]string, error) {
-	return selectStrMap(ctx, db.QueryContext, "SELECT `key`, `value` FROM `dep_adv_items` WHERE `adv_id` = ?", id)
+	return selectStrMap(ctx, db.QueryContext, "SELECT `key`, `value` FROM `bk_dep_adv_items` WHERE `adv_id` = ?", id)
 }
 
 func genDepAdvFilter(filter pkg_model.DepAdvFilter) (string, []any) {

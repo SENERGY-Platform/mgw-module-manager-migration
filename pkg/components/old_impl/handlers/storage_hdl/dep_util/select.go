@@ -24,7 +24,7 @@ import (
 )
 
 func SelectHostResources(ctx context.Context, db *sql.DB, dID string) (map[string]string, error) {
-	rows, err := db.QueryContext(ctx, "SELECT `ref`, `res_id` FROM `host_resources` WHERE `dep_id` = ?", dID)
+	rows, err := db.QueryContext(ctx, "SELECT `ref`, `res_id` FROM `bk_host_resources` WHERE `dep_id` = ?", dID)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func SelectHostResources(ctx context.Context, db *sql.DB, dID string) (map[strin
 }
 
 func SelectSecrets(ctx context.Context, db *sql.DB, dID string) (map[string]model.DepSecret, error) {
-	rows, err := db.QueryContext(ctx, "SELECT `ref`, `sec_id`, `item`, `as_mount`, `as_env` FROM `secrets` WHERE `dep_id` = ?", dID)
+	rows, err := db.QueryContext(ctx, "SELECT `ref`, `sec_id`, `item`, `as_mount`, `as_env` FROM `bk_secrets` WHERE `dep_id` = ?", dID)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func SelectSecrets(ctx context.Context, db *sql.DB, dID string) (map[string]mode
 }
 
 func SelectConfigs(ctx context.Context, db *sql.DB, dID string, configs map[string]model.DepConfig) error {
-	cfgRows, err := db.QueryContext(ctx, "SELECT `ref`, `v_string`, `v_int`, `v_float`, `v_bool` FROM `configs` WHERE `dep_id` = ?", dID)
+	cfgRows, err := db.QueryContext(ctx, "SELECT `ref`, `v_string`, `v_int`, `v_float`, `v_bool` FROM `bk_configs` WHERE `dep_id` = ?", dID)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func SelectConfigs(ctx context.Context, db *sql.DB, dID string, configs map[stri
 }
 
 func SelectListConfigs(ctx context.Context, db *sql.DB, dID string, configs map[string]model.DepConfig) error {
-	lstCfgRows, err := db.QueryContext(ctx, "SELECT `ref`, `ord`, `v_string`, `v_int`, `v_float`, `v_bool` FROM `list_configs` WHERE `dep_id` = ? ORDER BY `ref`, `ord`", dID)
+	lstCfgRows, err := db.QueryContext(ctx, "SELECT `ref`, `ord`, `v_string`, `v_int`, `v_float`, `v_bool` FROM `bk_list_configs` WHERE `dep_id` = ? ORDER BY `ref`, `ord`", dID)
 	if err != nil {
 		return err
 	}
@@ -163,19 +163,19 @@ func SelectListConfigs(ctx context.Context, db *sql.DB, dID string, configs map[
 }
 
 func SelectRequiredDep(ctx context.Context, db *sql.DB, dID string) ([]string, error) {
-	return selectReq(ctx, db, "SELECT `req_id` FROM `dependencies` WHERE `dep_id` = ?", dID)
+	return selectReq(ctx, db, "SELECT `req_id` FROM `bk_dependencies` WHERE `dep_id` = ?", dID)
 }
 
 func SelectDepRequiring(ctx context.Context, db *sql.DB, dID string) ([]string, error) {
-	return selectReq(ctx, db, "SELECT `dep_id` FROM `dependencies` WHERE `req_id` = ?", dID)
+	return selectReq(ctx, db, "SELECT `dep_id` FROM `bk_dependencies` WHERE `req_id` = ?", dID)
 }
 
 func SelectRequiredMod(ctx context.Context, db *sql.DB, mID string) ([]string, error) {
-	return selectReq(ctx, db, "SELECT `req_id` FROM `mod_dependencies` WHERE `mod_id` = ?", mID)
+	return selectReq(ctx, db, "SELECT `req_id` FROM `bk_mod_dependencies` WHERE `mod_id` = ?", mID)
 }
 
 func SelectModRequiring(ctx context.Context, db *sql.DB, mID string) ([]string, error) {
-	return selectReq(ctx, db, "SELECT `mod_id` FROM `mod_dependencies` WHERE `req_id` = ?", mID)
+	return selectReq(ctx, db, "SELECT `mod_id` FROM `bk_mod_dependencies` WHERE `req_id` = ?", mID)
 }
 
 func selectReq(ctx context.Context, db *sql.DB, query, ID string) ([]string, error) {
@@ -199,7 +199,7 @@ func selectReq(ctx context.Context, db *sql.DB, query, ID string) ([]string, err
 }
 
 func SelectDepContainers(ctx context.Context, db *sql.DB, dID string) (map[string]model.DepContainer, error) {
-	rows, err := db.QueryContext(ctx, "SELECT `ctr_id`, `srv_ref`, `alias`, `order` FROM `containers` WHERE `dep_id` = ?", dID)
+	rows, err := db.QueryContext(ctx, "SELECT `ctr_id`, `srv_ref`, `alias`, `order` FROM `bk_containers` WHERE `dep_id` = ?", dID)
 	if err != nil {
 		return nil, err
 	}

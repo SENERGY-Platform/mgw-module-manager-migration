@@ -17,10 +17,7 @@
 package storage_hdl
 
 import (
-	"context"
 	"database/sql"
-	"database/sql/driver"
-	"mgw-module-manager-migration/pkg/components/old_impl/model"
 )
 
 const tLayout = "2006-01-02 15:04:05.000000"
@@ -31,12 +28,4 @@ type Handler struct {
 
 func New(db *sql.DB) *Handler {
 	return &Handler{db: db}
-}
-
-func (h *Handler) BeginTransaction(ctx context.Context) (driver.Tx, error) {
-	tx, e := h.db.BeginTx(ctx, nil)
-	if e != nil {
-		return nil, model.NewInternalError(e)
-	}
-	return tx, nil
 }

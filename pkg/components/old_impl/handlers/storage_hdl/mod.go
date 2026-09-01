@@ -65,34 +65,6 @@ func (h *Handler) ListMod(ctx context.Context, filter pkg_model.ModFilter, depen
 	return modules, nil
 }
 
-func (h *Handler) ReadMod(ctx context.Context, mID string, dependencyInfo bool) (pkg_model.Module, error) {
-	row := h.db.QueryRowContext(ctx, "SELECT `dir`, `modfile`, `added`, `updated` FROM `modules` WHERE `id` = ?", mID)
-	var mod pkg_model.Module
-	var at, ut []uint8
-	err := row.Scan(&mod.Dir, &mod.ModFile, &at, &ut)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return pkg_model.Module{}, model.NewNotFoundError(err)
-		}
-		return pkg_model.Module{}, model.NewInternalError(err)
-	}
-	if dependencyInfo {
-		if mod.RequiredMod, err = dep_util.SelectRequiredMod(ctx, h.db, mID); err != nil {
-			return pkg_model.Module{}, model.NewInternalError(err)
-		}
-		if mod.ModRequiring, err = dep_util.SelectModRequiring(ctx, h.db, mID); err != nil {
-			return pkg_model.Module{}, model.NewInternalError(err)
-		}
-	}
-	if mod.Added, err = time.Parse(tLayout, string(at)); err != nil {
-		return pkg_model.Module{}, model.NewInternalError(err)
-	}
-	if mod.Updated, err = time.Parse(tLayout, string(ut)); err != nil {
-		return pkg_model.Module{}, model.NewInternalError(err)
-	}
-	return mod, nil
-}
-
 func genModFilter(filter pkg_model.ModFilter) (string, []any) {
 	var fc []string
 	var val []any

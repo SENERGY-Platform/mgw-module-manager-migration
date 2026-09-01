@@ -26,7 +26,6 @@ import (
 
 type storageHandler interface {
 	ListDep(ctx context.Context, filter model.DepFilter, dependencyInfo, assets, containers bool) (map[string]model.Deployment, error)
-	ReadDep(ctx context.Context, dID string, dependencyInfo, assets, containers bool) (model.Deployment, error)
 }
 
 type cfgValidationHandler interface {

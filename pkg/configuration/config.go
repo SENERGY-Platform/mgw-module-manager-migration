@@ -26,11 +26,16 @@ type OldImplConfig struct {
 	HttpTimeout           sb_config_types.Duration `json:"http_timeout" env_var:"HTTP_TIMEOUT"`
 }
 
+type NewImplConfig struct {
+	ManagerIDPath string `json:"manager_id_path" env_var:"NEW_MANAGER_ID_PATH"`
+}
+
 type Config struct {
 	CoreId    string         `json:"core_id" env_var:"CORE_ID"`
 	ManagerId string         `json:"manager_id" env_var:"MANAGER_ID"`
 	Database  DatabaseConfig `json:"database"`
 	OldImpl   OldImplConfig  `json:"old_impl"`
+	NewImpl   NewImplConfig  `json:"new_impl"`
 }
 
 var defaultConfig = Config{
@@ -47,6 +52,9 @@ var defaultConfig = Config{
 		ManagerIDPath:         "/opt/module-manager/data/mid",
 		CewBaseUrl:            "http://core-api/ce-wrapper",
 		HttpTimeout:           sb_config_types.Duration(time.Second * 30),
+	},
+	NewImpl: NewImplConfig{
+		ManagerIDPath: "/opt/module-manager/service/mid",
 	},
 }
 

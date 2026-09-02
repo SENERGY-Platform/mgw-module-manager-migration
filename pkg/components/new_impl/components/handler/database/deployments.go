@@ -19,8 +19,43 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	helper_slices "mgw-module-manager-migration/pkg/components/new_impl/components/helper/slices"
 	"mgw-module-manager-migration/pkg/components/new_impl/models"
+	"os"
+	"strings"
+	"time"
 )
+
+func (h *Handler) ReadModules(ctx context.Context, filter models.ModulesFilter) (map[string]models.DatabaseModule, error) {
+	fc, val := genModulesFilter(filter)
+	rows, err := h.sqlDB.QueryContext(
+		ctx,
+		"SELECT id, dir, source, channel, added, updated FROM modules"+fc+";",
+		val...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	mods := make(map[string]models.DatabaseModule)
+	for rows.Next() {
+		var mod models.DatabaseModule
+		var at, ut []uint8
+		err = rows.Scan(&mod.Id, &mod.DirName, &mod.Source, &mod.Channel, &at, &ut)
+		if err != nil {
+			return nil, err
+		}
+		if mod.Added, err = time.Parse(timeLayout, string(at)); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "read modules", mod.Id, err)
+		}
+		if mod.Updated, err = time.Parse(timeLayout, string(ut)); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "read modules", mod.Id, err)
+		}
+		mods[mod.Id] = mod
+	}
+	return mods, nil
+}
 
 func (h *Handler) CreateDeployment(
 	ctx context.Context,
@@ -214,4 +249,38 @@ func createFileGroupFiles(ctx context.Context, tx *sql.Tx, groupId string, files
 		}
 	}
 	return
+}
+
+func genModulesFilter(filter models.ModulesFilter) (string, []any) {
+	var fc []string
+	var val []any
+	if len(filter.Ids) > 0 {
+		ids := helper_slices.RemoveDuplicates(filter.Ids)
+		fc = append(fc, "id IN ("+genQuestionMarks(len(ids))+")")
+		for _, id := range ids {
+			val = append(val, id)
+		}
+	}
+	if filter.Source != "" {
+		fc = append(fc, "source = ?")
+		val = append(val, filter.Source)
+	}
+	if filter.Channel != "" {
+		fc = append(fc, "channel = ?")
+		val = append(val, filter.Channel)
+	}
+	if len(fc) > 0 {
+		return " WHERE " + strings.Join(fc, " AND "), val
+	}
+	return "", nil
+}
+
+func genQuestionMarks(numCol int) string {
+	if numCol <= 0 {
+		return ""
+	}
+	if numCol >= 2 {
+		return strings.Repeat("?, ", numCol-1) + "?"
+	}
+	return "?"
 }

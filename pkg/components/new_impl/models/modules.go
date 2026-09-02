@@ -28,3 +28,9 @@ type DatabaseModule struct {
 	Added   time.Time
 	Updated time.Time
 }
+
+type ModulesFilter struct {
+	Ids     []string
+	Source  string
+	Channel string
+}

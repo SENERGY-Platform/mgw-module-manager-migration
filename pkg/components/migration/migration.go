@@ -8,6 +8,7 @@ import (
 	new_model "mgw-module-manager-migration/pkg/components/new_impl/models"
 	"mgw-module-manager-migration/pkg/components/old_impl"
 	old_model "mgw-module-manager-migration/pkg/components/old_impl/model"
+	"os"
 )
 
 func Run(ctx context.Context, oldSrv *old_impl.Service, newSrv *new_impl.Service, repoSource, repoChannel string) error {
@@ -33,10 +34,7 @@ func Run(ctx context.Context, oldSrv *old_impl.Service, newSrv *new_impl.Service
 			IsDeployed: oldModule.IsDeployed,
 		}
 		if oldModule.IsDeployed {
-			newModule.Deployment, err = getNewDeployment(oldModule.ID, repoSource, repoChannel, oldModule.Deployment)
-			if err != nil {
-				return err
-			}
+			newModule.Deployment = getNewDeployment(oldModule.ID, repoSource, repoChannel, oldModule.Deployment)
 			for _, advertisement := range oldModule.DepAdvertisements {
 				newModule.DepAdvertisements = append(newModule.DepAdvertisements, new_model.DeploymentAdvertisement{
 					Id:           advertisement.ID,
@@ -65,7 +63,7 @@ func Run(ctx context.Context, oldSrv *old_impl.Service, newSrv *new_impl.Service
 	return nil
 }
 
-func getNewDeployment(moduleId, repoSource, repoChannel string, oldDeployment old_model.Deployment) (new_impl.Deployment, error) {
+func getNewDeployment(moduleId, repoSource, repoChannel string, oldDeployment old_model.Deployment) new_impl.Deployment {
 	newDeployment := new_impl.Deployment{
 		DeploymentBase: new_model.DeploymentBase{
 			Id:            oldDeployment.ID,
@@ -110,7 +108,8 @@ func getNewDeployment(moduleId, repoSource, repoChannel string, oldDeployment ol
 	for ref, config := range oldDeployment.Configs {
 		value, err := configs.GetValue(config.Value, configs.GetDataType(config.DataType), config.IsSlice)
 		if err != nil {
-			return new_impl.Deployment{}, fmt.Errorf("get config value for '%s': %w", ref, err)
+			fmt.Fprintf(os.Stderr, "get config value '%s' '%s' '%s': %s\n", moduleId, oldDeployment.ID, ref, err)
+			continue
 		}
 		newDeployment.UserConfigs = append(newDeployment.UserConfigs, new_model.DeploymentUserConfig{
 			Id:           oldDeployment.ID + "_" + ref,
@@ -138,5 +137,5 @@ func getNewDeployment(moduleId, repoSource, repoChannel string, oldDeployment ol
 			Alias:        container.Alias,
 		})
 	}
-	return newDeployment, nil
+	return newDeployment
 }

@@ -39,15 +39,26 @@ func (s *Service) WriteManagerId(id string) error {
 }
 
 func (s *Service) WriteModules(ctx context.Context, modules []Module) error {
+	currentModules, err := s.databaseHandler.ReadModules(ctx, models.ModulesFilter{})
+	if err != nil {
+		return fmt.Errorf("read existing modules: %w", err)
+	}
+	var newModules []Module
+	for _, module := range modules {
+		_, ok := currentModules[module.Id]
+		if !ok {
+			newModules = append(newModules, module)
+		}
+	}
 	tx, err := s.databaseHandler.BeginTx(ctx)
 	if err != nil {
-		return fmt.Errorf("begin database transaction: %w", err)
+		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
-	for _, module := range modules {
+	for _, module := range newModules {
 		err = s.databaseHandler.CreateModule(ctx, tx, module.DatabaseModule)
 		if err != nil {
-			return fmt.Errorf("write module '%s' to database: %w", module.Id, err)
+			return fmt.Errorf("write module '%s': %w", module.Id, err)
 		}
 		if !module.IsDeployed {
 			continue
@@ -66,7 +77,7 @@ func (s *Service) WriteModules(ctx context.Context, modules []Module) error {
 			module.Deployment.Containers,
 		)
 		if err != nil {
-			return fmt.Errorf("write deployment '%s' '%s' to database: %w", module.Id, module.Deployment.Id, err)
+			return fmt.Errorf("write deployment '%s' '%s': %w", module.Id, module.Deployment.Id, err)
 		}
 		if len(module.DepAdvertisements) > 0 {
 			err = s.databaseHandler.WriteDeploymentAdvertisements(
@@ -77,13 +88,13 @@ func (s *Service) WriteModules(ctx context.Context, modules []Module) error {
 				false,
 			)
 			if err != nil {
-				return fmt.Errorf("write deployment advertisements '%s' '%s' to database: %w", module.Id, module.Deployment.Id, err)
+				return fmt.Errorf("write deployment advertisements '%s' '%s': %w", module.Id, module.Deployment.Id, err)
 			}
 		}
 	}
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("commit database transaction: %w", err)
+		return fmt.Errorf("commit transaction: %w", err)
 	}
 	return nil
 }

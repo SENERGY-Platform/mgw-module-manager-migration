@@ -50,7 +50,6 @@ func main() {
 			ModHandlerWorkdirPath: config.OldImpl.ModHandlerWorkdirPath,
 			DepHandlerWorkdirPath: config.OldImpl.DepHandlerWorkdirPath,
 			ManagerIDPath:         config.OldImpl.ManagerIDPath,
-			CoreID:                config.CoreId,
 			CewBaseUrl:            config.OldImpl.CewBaseUrl,
 			HttpTimeout:           time.Duration(config.OldImpl.HttpTimeout),
 		},

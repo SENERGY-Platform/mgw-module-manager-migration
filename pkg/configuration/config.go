@@ -33,7 +33,6 @@ type NewImplConfig struct {
 }
 
 type Config struct {
-	CoreId    string         `json:"core_id" env_var:"CORE_ID"`
 	ManagerId string         `json:"manager_id" env_var:"MANAGER_ID"`
 	Database  DatabaseConfig `json:"database"`
 	OldImpl   OldImplConfig  `json:"old_impl"`

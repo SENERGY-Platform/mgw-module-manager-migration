@@ -16,7 +16,6 @@ import (
 	"mgw-module-manager-migration/pkg/components/old_impl/model"
 	"mgw-module-manager-migration/pkg/components/old_impl/model/pkg_model"
 	"mgw-module-manager-migration/pkg/components/old_impl/util"
-	"mgw-module-manager-migration/pkg/components/old_impl/util/naming_hdl"
 	"net"
 	"net/http"
 	"slices"
@@ -27,7 +26,6 @@ type Config struct {
 	ModHandlerWorkdirPath string
 	DepHandlerWorkdirPath string
 	ManagerIDPath         string
-	CoreID                string
 	CewBaseUrl            string
 	HttpTimeout           time.Duration
 }
@@ -45,8 +43,6 @@ func New(config Config, db *sql.DB, managerId string) (*Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get manager id: %w", err)
 	}
-
-	naming_hdl.Init(config.CoreID, "mgw")
 
 	storageHandler := storage_hdl.New(db)
 

@@ -13,11 +13,11 @@ import (
 func Run(ctx context.Context, oldSrv *old_impl.Service, newSrv *new_impl.Service, repoSource, repoChannel string) error {
 	err := oldSrv.RenameDatabaseTables(ctx)
 	if err != nil {
-		return fmt.Errorf("backup database: %w", err)
+		return fmt.Errorf("backup old database: %w", err)
 	}
 	oldModules, err := oldSrv.GetModules(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("read old database: %w", err)
 	}
 	var newModules []new_impl.Module
 	for _, oldModule := range oldModules {
@@ -56,11 +56,11 @@ func Run(ctx context.Context, oldSrv *old_impl.Service, newSrv *new_impl.Service
 	}
 	err = newSrv.InitDatabaseTables(ctx)
 	if err != nil {
-		return fmt.Errorf("init database tables: %w", err)
+		return fmt.Errorf("init new database: %w", err)
 	}
 	err = newSrv.WriteModules(ctx, newModules)
 	if err != nil {
-		return fmt.Errorf("write modules: %w", err)
+		return fmt.Errorf("write database: %w", err)
 	}
 	return nil
 }

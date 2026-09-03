@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mgw-module-manager-migration/pkg/components/helper/mysql"
 	"mgw-module-manager-migration/pkg/components/helper/os_signal"
@@ -58,6 +59,9 @@ func main() {
 	)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "init old service: %s\n", err)
+		if errors.Is(err, os.ErrNotExist) {
+			return
+		}
 		ec = 1
 		return
 	}

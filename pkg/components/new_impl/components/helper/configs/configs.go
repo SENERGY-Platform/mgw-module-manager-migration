@@ -7,7 +7,40 @@ import (
 	"mgw-module-manager-migration/pkg/components/new_impl/models"
 	"mgw-module-manager-migration/pkg/components/new_impl/models/constants"
 	"mgw-module-manager-migration/pkg/components/old_impl/libs/module_lib"
+	"slices"
 )
+
+func ValueIsEqual(a, b models.Value) bool {
+	if a.DataType != b.DataType {
+		return false
+	}
+	if a.IsSlice != b.IsSlice {
+		return false
+	}
+	switch a.DataType {
+	case constants.ValueDataTypeString:
+		if a.IsSlice {
+			return slices.Equal(a.StringSlice, b.StringSlice)
+		}
+		return a.String == b.String
+	case constants.ValueDataTypeInt64:
+		if a.IsSlice {
+			return slices.Equal(a.Int64Slice, b.Int64Slice)
+		}
+		return a.Int64 == b.Int64
+	case constants.ValueDataTypeFloat64:
+		if a.IsSlice {
+			return slices.Equal(a.Float64Slice, b.Float64Slice)
+		}
+		return a.Float64 == b.Float64
+	case constants.ValueDataTypeBool:
+		if a.IsSlice {
+			return slices.Equal(a.BoolSlice, b.BoolSlice)
+		}
+		return a.Bool == b.Bool
+	}
+	return false
+}
 
 func GetValue(val any, dataType int, isSlice bool) (models.Value, error) {
 	config := models.Value{

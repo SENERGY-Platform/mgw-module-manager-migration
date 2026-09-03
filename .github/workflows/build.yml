@@ -31,4 +31,4 @@ jobs:
             VERSION=${{ github.ref_name }}
           tags: |
             ghcr.io/senergy-platform/mgw-module-manager-migration:latest
-            ghcr.io/senergy-platform/mgw-module-manager-migratio:${{ github.ref_name }}
+            ghcr.io/senergy-platform/mgw-module-manager-migration:${{ github.ref_name }}

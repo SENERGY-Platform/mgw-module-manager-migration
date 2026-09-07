@@ -8,6 +8,7 @@ import (
 	"mgw-module-manager-migration/pkg/components/new_impl/components/handler/database/migrations/db_init"
 	"mgw-module-manager-migration/pkg/components/new_impl/components/helper/naming"
 	"mgw-module-manager-migration/pkg/components/new_impl/models"
+	"os"
 )
 
 type Config struct {
@@ -95,6 +96,9 @@ func (s *Service) WriteModules(ctx context.Context, modules []Module) error {
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("commit transaction: %w", err)
+	}
+	for _, module := range newModules {
+		_, _ = fmt.Fprintf(os.Stdout, "write module '%s'\n", module.Id)
 	}
 	return nil
 }
